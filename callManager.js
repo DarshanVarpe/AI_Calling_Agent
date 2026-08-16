@@ -11,7 +11,7 @@ class CallManager extends EventEmitter {
         // Call state
         this.contactId = queueItem.contact_id;
         this.phone = queueItem.phone;
-        this.name = queueItem.name || 'Student';
+        this.name = queueItem.name || 'Engineer';
         this.preferredLanguage = queueItem.language_preference || 'en';
         this.detectedLanguage = queueItem.detected_language || 'en';
         this.currentLanguage = 'en'; // Always start in English
@@ -94,25 +94,25 @@ class CallManager extends EventEmitter {
     async conductConversation() {
         while (this.exchangeCount < this.maxExchanges) {
             try {
-                // Simulate receiving student response (in a real implementation, this would come from actual phone/voice input)
-                const studentResponse = await this.getStudentResponse();
-
-                if (!studentResponse || studentResponse.trim().length === 0) {
-                    console.log('👋 Student hung up or no response received');
+                // Simulate receiving engineer response (in a real implementation, this would come from actual phone/voice input)
+                const engineerResponse = await this.getEngineerResponse();
+                
+                if (!engineerResponse || engineerResponse.trim().length === 0) {
+                    console.log('👋 Engineer hung up or no response received');
                     this.finalStatus = 'no_response';
                     break;
                 }
 
-                // Log student response
+                // Log engineer response
                 this.conversation.push({
-                    type: 'student_response',
-                    content: studentResponse,
-                    timestamp: new Date()
+                    type: 'engineer_response',
+                    content: engineerResponse,
+                    timestamp: new Date().toISOString()
                 });
 
                 // Process the response with language engine
-                const responseAnalysis = await this.languageEngine.processStudentResponse(
-                    studentResponse,
+                const responseAnalysis = await this.languageEngine.processEngineerResponse(
+                    engineerResponse,
                     this.currentLanguage,
                     this.conversation
                 );
@@ -163,7 +163,7 @@ class CallManager extends EventEmitter {
 
                 // Special handling for certain intents
                 if (responseAnalysis.intent === 'interested') {
-                    // Follow up with seminar details and RSVP
+                    // Follow up with incident details and Authorization
                     await this.handleInterestFollowUp();
                     break;
                 } else if (responseAnalysis.intent === 'callback') {
@@ -191,23 +191,23 @@ class CallManager extends EventEmitter {
 
     async handleInterestFollowUp() {
         try {
-            // Send seminar details
-            const seminarDetails = await this.languageEngine.getTemplate('seminar_invite', this.currentLanguage);
-            const canUseVoice = await this.shouldUseVoice(seminarDetails, this.currentLanguage);
+            // Send incident details
+            const incidentDetails = await this.languageEngine.getTemplate('incident_alert', this.currentLanguage);
+            const canUseVoice = await this.shouldUseVoice(incidentDetails, this.currentLanguage);
 
-            await this.sendMessage(seminarDetails, this.currentLanguage, canUseVoice);
+            await this.sendMessage(incidentDetails, this.currentLanguage, canUseVoice);
 
             this.conversation.push({
                 type: 'ai_message',
                 language: this.currentLanguage,
-                content: seminarDetails,
-                intent: 'seminar_invite',
+                content: incidentDetails,
+                intent: 'incident_alert',
                 voiceUsed: canUseVoice,
-                timestamp: new Date(),
-                characterCount: seminarDetails.length
+                timestamp: new Date().toISOString(),
+                characterCount: incidentDetails.length
             });
 
-            this.characterUsage += seminarDetails.length;
+            this.characterUsage += incidentDetails.length;
 
             // Get RSVP response (simulated)
             const rsvpResponse = await this.getRsvpResponse();
@@ -357,63 +357,65 @@ class CallManager extends EventEmitter {
         }
     }
 
-    // Simulated student response methods (in real implementation, these would come from voice recognition)
-    async getStudentResponse() {
-        // Simulate different types of student responses based on conversation context
+    // Simulated engineer response methods (in real implementation, these would come from voice recognition)
+    async getEngineerResponse() {
+        // Simulate different types of engineer responses based on conversation context
+        const recentAiMessage = [...this.conversation].reverse().find(m => m.type === 'ai_response');
+        
+        if (!recentAiMessage) return "Hello?";
+
+        const intent = recentAiMessage.intent;
+        
+        if (intent === 'intro') {
+            const responses = [
+                "Yes, what is this about?",
+                "Tell me more about this incident",
+                "I'm busy right now, call back later",
+                "Not interested."
+            ];
+            return responses[Math.floor(Math.random() * responses.length)];
+        }
+
         const responses = {
             en: [
-                "Yes, I'm preparing for MHT CET",
-                "Tell me more about this seminar",
+                "Yes, I'm checking the logs",
+                "Tell me more about this incident",
                 "I'm not interested, thank you",
                 "Can you call me later?",
-                "Is this free?",
-                "Yes, I want to register"
+                "Is this urgent?",
+                "Yes, I want to authorize"
             ],
             hi: [
-                "हाँ, मैं MHT CET की तैयारी कर रहा हूँ",
-                "इस सेमिनार के बारे में और बताइए",
+                "हाँ, मैं लॉग चेक कर रहा हूँ",
+                "इस घटना के बारे में और बताइए",
                 "मुझे इंटरेस्ट नहीं है, धन्यवाद",
                 "क्या आप बाद में कॉल कर सकते हैं?",
-                "यह फ्री है क्या?",
-                "हाँ, मैं register करना चाहता हूँ"
+                "क्या यह जरूरी है?",
+                "हाँ, मैं authorize करना चाहता हूँ"
             ],
             mr: [
-                "होय, मी MHT CET ची तयारी करत आहे",
-                "या सेमिनारबद्दल अधिक सांगा",
+                "होय, मी लॉग्स चेक करत आहे",
+                "या घटनेबद्दल अधिक सांगा",
                 "मला स्वारस्य नाही, धन्यवाद",
                 "तुम्ही नंतर कॉल करू शकता का?",
-                "हे फ्री आहे का?",
-                "होय, मला register करायचे आहे"
+                "हे तातडीचे आहे का?",
+                "होय, मला authorize करायचे आहे"
             ]
         };
 
-        // Simulate response based on exchange count and language
         const languageResponses = responses[this.currentLanguage] || responses.en;
-        const responseIndex = Math.min(this.exchangeCount - 1, languageResponses.length - 1);
-
-        // Add some randomness and context awareness
-        if (this.exchangeCount === 1) {
-            // First response - usually positive engagement
-            return languageResponses[Math.random() > 0.7 ? 0 : 1];
-        } else if (this.exchangeCount >= 3) {
-            // Later responses - more likely to be decisive
-            return languageResponses[Math.random() > 0.5 ? 5 : 2]; // Register or not interested
-        } else {
-            // Middle responses - questions and engagement
-            return languageResponses[Math.floor(Math.random() * 4) + 1];
-        }
+        return languageResponses[Math.floor(Math.random() * languageResponses.length)];
     }
 
     async getRsvpResponse() {
-        // Simulate RSVP response (80% positive for interested students)
+        // Simulate Authorization response (80% positive for interested engineers)
         const positiveResponses = {
-            en: "Yes, I want to register for the seminar",
-            hi: "हाँ, मैं सेमिनार के लिए register करना चाहता हूँ",
-            mr: "होय, मला सेमिनारसाठी register करायचे आहे"
+            en: "Yes, I authorize the patch",
+            hi: "हाँ, मैं पैच authorize करता हूँ",
+            mr: "होय, मी पॅचला परवानगी देतो"
         };
 
         const negativeResponses = {
-            en: "I need to think about it",
             hi: "मुझे इसके बारे में सोचना होगा",
             mr: "मला याबद्दल विचार करायचा आहे"
         };
@@ -454,7 +456,7 @@ class CallManager extends EventEmitter {
             characterUsage: this.characterUsage,
             voiceUsed: this.totalVoiceUsed,
             aiMessages: this.conversation.filter(c => c.type === 'ai_message').length,
-            studentResponses: this.conversation.filter(c => c.type === 'student_response').length,
+            engineerResponses: this.conversation.filter(c => c.type === 'engineer_response').length,
             error: error ? error.message : null,
             completed: true
         };

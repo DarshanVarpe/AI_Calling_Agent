@@ -2,7 +2,7 @@
 
 import twilio from 'twilio';
 import dotenv from 'dotenv';
-import { startMHTCETConversation, continueMHTCETConversation } from './geminiEngine.js';
+import { startIncidentConversation, continueIncidentConversation } from './geminiEngine.js';
 import AICallerDatabase from './database.js';
 
 dotenv.config();
@@ -102,7 +102,7 @@ class WhatsAppManager {
 
       if (!chatSession) {
         // Start new conversation
-        const result = await startMHTCETConversation(senderName);
+        const result = await startIncidentConversation('en');
         chatSession = {
           chat: result.chat,
           history: [
@@ -115,7 +115,7 @@ class WhatsAppManager {
         this.activeChats.set(from, chatSession);
 
         // Get AI response to user's first message
-        const aiResponse = await continueMHTCETConversation(chatSession.chat, message);
+        const aiResponse = await continueIncidentConversation(chatSession.chat, message);
         response = aiResponse.text;
         intent = aiResponse.intent;
 
@@ -125,7 +125,7 @@ class WhatsAppManager {
         // Continue existing conversation
         chatSession.history.push({ role: 'user', text: message });
 
-        const aiResponse = await continueMHTCETConversation(chatSession.chat, message);
+        const aiResponse = await continueIncidentConversation(chatSession.chat, message);
         response = aiResponse.text;
         intent = aiResponse.intent;
 

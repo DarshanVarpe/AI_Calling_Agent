@@ -26,7 +26,7 @@ class AICallerDatabase {
                 name TEXT,
                 email TEXT,
                 status TEXT DEFAULT 'not_called' CHECK (status IN ('not_called', 'calling', 'interested', 'callback', 'not_interested', 'completed')),
-                rsvp TEXT DEFAULT 'none' CHECK (rsvp IN ('none', 'yes', 'no', 'maybe')),
+                patch_authorized TEXT DEFAULT 'none' CHECK (patch_authorized IN ('none', 'yes', 'no', 'maybe')),
                 language_preference TEXT DEFAULT 'en' CHECK (language_preference IN ('en', 'hi', 'mr')),
                 detected_language TEXT CHECK (detected_language IN ('en', 'hi', 'mr') OR detected_language IS NULL),
                 notes TEXT,
@@ -63,9 +63,9 @@ class AICallerDatabase {
                 duration_seconds INTEGER,
                 transcript TEXT,
                 ai_messages_count INTEGER DEFAULT 0,
-                student_responses_count INTEGER DEFAULT 0,
+                engineer_responses_count INTEGER DEFAULT 0,
                 final_status TEXT,
-                final_rsvp TEXT,
+                patch_authorized TEXT,
                 character_usage INTEGER DEFAULT 0,
                 voice_used BOOLEAN DEFAULT FALSE,
                 error_message TEXT,
@@ -145,7 +145,7 @@ class AICallerDatabase {
 
             updateContactResult: this.db.prepare(`
                 UPDATE contacts
-                SET status = ?, rsvp = ?, notes = ?, last_attempt_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                SET status = ?, patch_authorized = ?, notes = ?, last_attempt_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             `),
 
@@ -238,8 +238,8 @@ class AICallerDatabase {
         this.statements.updateContactLanguage.run(detectedLanguage, contactId);
     }
 
-    async updateContactResult(contactId, status, rsvp, notes = '') {
-        this.statements.updateContactResult.run(status, rsvp, notes, contactId);
+    async updateContactResult(contactId, status, patchAuthorized, notes = '') {
+        this.statements.updateContactResult.run(status, patchAuthorized, notes, contactId);
     }
 
     // Queue Management Methods
@@ -317,8 +317,8 @@ class AICallerDatabase {
             INSERT INTO call_logs (
                 id, contact_id, batch_id, conversation_language,
                 start_time, end_time, duration_seconds, transcript,
-                ai_messages_count, student_responses_count,
-                final_status, final_rsvp, character_usage, voice_used, error_message
+                ai_messages_count, engineer_responses_count,
+                final_status, patch_authorized, character_usage, voice_used, error_message
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
@@ -326,7 +326,7 @@ class AICallerDatabase {
             id, callLog.contactId, callLog.batchId, callLog.language,
             callLog.startTime, callLog.endTime, callLog.duration,
             JSON.stringify(callLog.transcript), callLog.aiMessages,
-            callLog.studentResponses, callLog.finalStatus, callLog.finalRsvp,
+            callLog.engineerResponses, callLog.finalStatus, callLog.patchAuthorized,
             callLog.characterUsage, callLog.voiceUsed ? 1 : 0, callLog.error
         );
 

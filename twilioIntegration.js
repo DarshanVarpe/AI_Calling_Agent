@@ -2,7 +2,7 @@
 
 import twilio from 'twilio';
 import dotenv from 'dotenv';
-import { startConversation, continueConversation, getSeminarDetails } from './geminiEngine.js';
+import { startConversation, continueConversation, getIncidentDetails } from './geminiEngine.js';
 import LanguageEngine from './languageEngine.js';
 import AICallerDatabase from './database.js';
 
@@ -125,7 +125,7 @@ class TwilioCallManager {
     // Aria's introduction
     const intro = await this.languageEngine.getTemplate('intro', 'en');
 
-    // Gather student response with speech recognition
+    // Gather engineer response with speech recognition
     const gather = twiml.gather({
       input: 'speech',
       action: '/api/twilio/voice-continue',
@@ -150,7 +150,7 @@ class TwilioCallManager {
   /**
    * Generate TwiML for conversation continuation
    */
-  async generateContinueTwiML(callSid, studentSpeech, noInput = false) {
+  async generateContinueTwiML(callSid, engineerSpeech, noInput = false) {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const twiml = new VoiceResponse();
 
@@ -186,20 +186,20 @@ class TwilioCallManager {
         // First conversation - need to initialize
         const { chat, text, intent } = await startConversation(
           callState.contact,
-          getSeminarDetails()
+          getIncidentDetails()
         );
         callState.chat = chat;
       }
 
       const { text: aiResponse, intent } = await continueConversation(
         callState.chat,
-        studentSpeech
+        engineerSpeech
       );
 
       // Save to conversation history
       callState.conversationHistory.push({
-        role: 'student',
-        text: studentSpeech,
+        role: 'engineer',
+        text: engineerSpeech,
         timestamp: new Date()
       });
       callState.conversationHistory.push({

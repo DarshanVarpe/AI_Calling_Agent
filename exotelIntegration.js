@@ -2,7 +2,7 @@
 import https from 'https';
 import querystring from 'querystring';
 import { speak } from './voiceEngine.js';
-import { startMHTCETConversation, continueMHTCETConversation } from './geminiEngine.js';
+import { startIncidentConversation, continueIncidentConversation } from './geminiEngine.js';
 
 class ExotelCaller {
   constructor() {
@@ -26,15 +26,15 @@ class ExotelCaller {
     console.log('📞 Exotel integration initialized');
   }
 
-  // Make outbound call to student
-  async makeCall(studentPhone, studentName = 'Student') {
+  // Make outbound call to engineer
+  async makeCall(engineerPhone, engineerName = 'Engineer') {
     if (!this.accountSid) {
       throw new Error('Exotel not configured');
     }
 
     const callData = querystring.stringify({
       From: this.fromNumber,
-      To: studentPhone,
+      To: engineerPhone,
       TimeLimit: '1800', // 30 minutes max
       TimeOut: '30', // Ring for 30 seconds
       Url: `${process.env.BASE_URL || 'http://localhost:3001'}/webhook/exotel-call-connect`,
@@ -61,12 +61,12 @@ class ExotelCaller {
           try {
             const result = JSON.parse(data);
             if (result.Call) {
-              console.log(`📞 Call initiated to ${studentPhone} - SID: ${result.Call.Sid}`);
+              console.log(`📞 Call initiated to ${engineerPhone} - SID: ${result.Call.Sid}`);
 
               // Initialize AI conversation session
               this.activeCalls.set(result.Call.Sid, {
-                studentPhone,
-                studentName,
+                engineerPhone,
+                engineerName,
                 aiSession: null,
                 startTime: Date.now()
               });
@@ -87,7 +87,7 @@ class ExotelCaller {
     });
   }
 
-  // Handle call connection (when student picks up)
+  // Handle call connection (when engineer picks up)
   async handleCallConnect(callSid, req, res) {
     console.log(`🔗 Call connected: ${callSid}`);
 
@@ -99,7 +99,7 @@ class ExotelCaller {
 
     try {
       // Start AI conversation
-      const aiResult = await startMHTCETConversation('en');
+      const aiResult = await startIncidentConversation('en');
       callSession.aiSession = aiResult.chat;
 
       // Generate TTS for Aria's greeting
@@ -129,7 +129,7 @@ class ExotelCaller {
     }
   }
 
-  // Handle student input (DTMF or speech)
+  // Handle engineer input (DTMF or speech)
   async handleGather(callSid, digits, speechResult, req, res) {
     const callSession = this.activeCalls.get(callSid);
     if (!callSession || !callSession.aiSession) {
@@ -156,10 +156,10 @@ class ExotelCaller {
         userMessage = 'I want to continue';
       }
 
-      console.log(`👂 Student input: ${userMessage}`);
+      console.log(`👂 Engineer input: ${userMessage}`);
 
       // Get AI response
-      const aiResult = await continueMHTCETConversation(callSession.aiSession, userMessage);
+      const aiResult = await continueIncidentConversation(callSession.aiSession, userMessage);
 
       // Generate TTS
       const audioPath = await speak(

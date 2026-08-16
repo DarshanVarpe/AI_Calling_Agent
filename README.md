@@ -1,52 +1,79 @@
-# 🎓 Aegis Nexus AI Voice Agent
+<div align="center">
+  <h1>🛡️ Aegis Nexus AI Voice Agent</h1>
+  <p><strong>An advanced AI-powered voice calling system for Enterprise Security Incident Response.</strong></p>
+  <p>Built to instantly reach on-call engineers with personalized alerts, diagnose server outages, and acquire patch authorizations using real-time conversational AI.</p>
+</div>
 
-An advanced AI-powered voice calling system for Enterprise Security Incident Response. Built for **Aegis Nexus AI** to reach engineers with personalized alerts and patch authorizations.
+---
+
+## 📖 Table of Contents
+- [🚀 Features](#-features)
+- [🏗️ System Architecture](#-system-architecture)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [📋 Prerequisites](#-prerequisites)
+- [⚡ Quick Start](#-quick-start)
+- [💻 Available Scripts](#-available-scripts)
+- [📞 Telephony Setup (Production)](#-telephony-setup-production)
+- [🎯 How It Works](#-how-it-works)
+- [📁 Project Structure](#-project-structure)
+- [🤝 Contributing](#-contributing)
+- [📝 License](#-license)
 
 ## 🚀 Features
 
 ### 🤖 AI-Powered Conversations
-- **Aria** - Aegis Nexus AI's multilingual AI assistant
-- Powered by Google Gemini 2.0 Flash for intelligent conversations
-- Natural language processing in English, Hindi, and Marathi
+- **Aria** - The autonomous Enterprise Security Copilot.
+- **Intelligent Diagnosis**: Powered by **Google Gemini 2.0 Flash** for accurate incident understanding.
+- **Multilingual Support**: Natural language processing in English, Hindi, and Marathi to communicate seamlessly with diverse engineering teams (code-mixing with Hinglish/Marathinglish).
 
-### 📍 Location-Based Guidance
-- **24 specific venues** across Maharashtra (April 20 - May 10, 2026)
-- District-wise coverage: Kolhapur, Sangli, Satara, Pune + major cities
-- Exact date/time recommendations based on student location
+### 📍 Incident-Based Alerting
+- Connects directly to server health monitoring.
+- Diagnoses latency, server outages, or security breaches.
+- Provides specific system node details and requests patch authorizations.
 
 ### 📞 Real Telephony Integration
-- **Exotel cloud telephony** for actual phone calls
-- Cost-effective calling at ₹1.2-1.8/minute
-- Automated bulk calling campaigns
-- Real-time call monitoring and analytics
-
-### 🎯 Aegis Nexus Services
-- **MHT-CET Preparation Events**: 24 locations with specific schedules
-- **Campus Tours**: University visits in Pune with parents
-- **Admission Counseling**: Professional guidance for engineering & medical colleges
+- **Cloud Telephony**: Native integrations with **Exotel & Twilio** for actual phone calls.
+- **Automated Escalation**: Wakes up on-call engineers and manages escalations (L1/L2/L3) based on responsiveness.
+- **Live Monitoring**: Real-time call monitoring and analytics via WebSocket dashboard.
 
 ### 🔊 Premium Voice Technology
-- **ElevenLabs TTS** with multilingual voices
-- Language-specific voice selection (Payal for EN/HI, dedicated MR voice)
-- High-quality audio generation
+- **High-Quality TTS**: Integrated with **ElevenLabs TTS** with multilingual voices.
+- **Low Latency**: Optimized audio generation for critical, high-stress scenarios.
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    A[On-Call Roster / Dashboard] -->|Triggers Alert| B(Backend Service - Node.js)
+    B -->|Generates Prompt| C{Gemini 2.0 Flash}
+    C -->|AI Response| D[ElevenLabs TTS]
+    D -->|Audio Stream| E{Telephony Gateway}
+    E -->|Exotel API| F[Engineer's Phone]
+    E -->|Twilio Media Streams| F
+    F -->|Voice Input| E
+    E -->|Transcribed Text| C
+    B -->|WebSocket Updates| G[Live Admin Dashboard]
+    B -->|Persists Data| H[(SQLite Database)]
+```
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Node.js, Express, WebSocket
-- **AI Engine**: Google Gemini 2.0 Flash
-- **Voice**: ElevenLabs TTS
-- **Telephony**: Exotel Cloud API
-- **Database**: SQLite with better-sqlite3
-- **Frontend**: Vanilla JS with modern dark UI
+- **Backend**: Node.js, Express, WebSocket (`ws`)
+- **AI Engine**: Google Gemini API (`@google/generative-ai`)
+- **Voice / TTS**: ElevenLabs TTS (`elevenlabs`)
+- **Telephony**: Exotel Cloud API, Twilio Webhooks & Media Streams (`twilio`)
+- **Database**: SQLite with `better-sqlite3`
+- **Frontend**: Vanilla JS, HTML5, CSS3 with a modern Dark UI
 
 ## 📋 Prerequisites
 
-- Node.js 18+ installed
-- Active internet connection
-- API keys for:
-  - Google Gemini API
-  - ElevenLabs TTS
-  - Exotel (for real calling)
+Before you begin, ensure you have met the following requirements:
+- **Node.js** v18+ installed on your machine.
+- An active internet connection.
+- API keys for the following services:
+  - **Google Gemini API**
+  - **ElevenLabs API**
+  - **Exotel / Twilio** (required only for real, outbound calling)
 
 ## ⚡ Quick Start
 
@@ -58,109 +85,83 @@ npm install
 ```
 
 ### 2. Environment Setup
+Copy the example environment file and configure your API keys:
 ```bash
-# Copy example environment file
 cp .env.exotel.example .env
-
-# Edit .env with your API keys
-# Add your Gemini, ElevenLabs, and Exotel credentials
 ```
+Edit the `.env` file and add your credentials for Gemini, ElevenLabs, and your chosen Telephony provider.
 
 ### 3. Start the System
+You can start the main dashboard server by running:
 ```bash
-# Start the server
-node dashboard-server.js
-
-# Open your browser
-# Navigate to http://localhost:3001
+npm run dashboard
 ```
+Then, open your browser and navigate to `http://localhost:3001` to view the live dashboard.
 
-## 📞 Setting Up Real Calling
+## 💻 Available Scripts
 
-### For Testing (Browser-based)
-The system works out of the box for browser-based testing with text-to-speech.
+The project includes several built-in scripts for testing and running the application (defined in `package.json`):
 
-### For Production (Real Phone Calls)
-Follow the detailed [Calling Setup Guide](CALLING_SETUP_GUIDE.md) to integrate with Exotel for actual outbound calling.
+- `npm start` - Starts the enhanced system automation.
+- `npm run dashboard` - Runs the main Express server and WebSocket for the live dashboard.
+- `npm run simulate` - Runs a local simulation of the calling system (useful for testing without real phone calls).
+- `npm run test` / `npm run test-batch` - Runs the multilingual automation tests.
+- `npm run test-system` - Starts the enhanced system in test mode.
 
-**Quick Setup:**
-1. Sign up at [Exotel](https://my.exotel.com)
-2. Get your Account SID, Auth Token, and Phone Number
-3. Add credentials to `.env` file
-4. Set up public URL (use ngrok for testing)
+## 📞 Telephony Setup (Production)
+
+### For Local / Browser-Based Testing
+The system works out of the box for browser-based testing using text-to-speech simulations without incurring telephony costs.
+
+### For Real Phone Calls
+To set up actual outbound incident alerting, you must integrate with a telephony provider.
+Follow our detailed **[Calling Setup Guide](CALLING_SETUP_GUIDE.md)** for step-by-step instructions.
+
+**Brief Exotel Setup:**
+1. Sign up at [Exotel](https://my.exotel.com).
+2. Obtain your **Account SID**, **API Key**, **API Token**, and **Exophone (Phone Number)**.
+3. Add these credentials to your `.env` file.
+4. Expose your local server to the public internet using [ngrok](https://ngrok.com/) (e.g., `ngrok http 3001`) and configure your webhooks.
 
 ## 🎯 How It Works
 
-### Student Experience
-1. **📞 Receives Call**: From Aegis Nexus AI via Aria
-2. **🗣️ Natural Conversation**: In English, Hindi, or Marathi
-3. **📍 Location Query**: "Which city are you from?"
-4. **🎯 Specific Guidance**: Exact venue, date, and time for their location
-5. **🎓 Services Overview**: MHT-CET prep, campus tours, counseling
-6. **✅ Registration**: Easy signup for events
+### The On-Call Engineer Experience
+1. **📞 Incident Trigger**: An automated call is initiated from Aegis Nexus AI (Aria) regarding a critical incident (e.g., database latency).
+2. **🗣️ Natural Conversation**: The AI speaks naturally in the engineer's preferred language (English, Hindi, or Marathi).
+3. **📍 Diagnosis Delivered**: "The database cluster in us-east-1 is experiencing high latency."
+4. **🎯 Patch Authorization requested**: "Do you authorize the automated rollback?"
+5. **✅ System Action**: The engineer verbally approves or declines. The system records the authorization and proceeds accordingly.
 
-### System Flow
-1. **Contact Import**: CSV upload with student data
-2. **Bulk Calling**: Automated campaigns with rate limiting
-3. **AI Conversations**: Gemini-powered natural interactions
-4. **Location Matching**: 24-venue schedule with exact recommendations
-5. **Results Tracking**: Comprehensive analytics and reporting
+### The System Flow
+1. **Roster Import**: Upload a CSV with on-call engineer contact details.
+2. **Automated Alerting**: The system traverses the escalation matrix, dialing engineers sequentially.
+3. **AI Orchestration**: Gemini processes the real-time conversation and formulates dynamic responses.
+4. **Results Tracking**: Everything is logged in the SQLite database, providing analytics on response times, authorization rates, and call outcomes via the live dashboard.
 
-## 🏗️ Project Structure
+## 📁 Project Structure
 
+```text
+CD-Calling-Agents/
+├── dashboard-server.js        # Main Express server and WebSocket implementation
+├── geminiEngine.js            # Gemini AI integration and Incident Knowledge base
+├── exotelIntegration.js       # Real telephony calling logic via Exotel
+├── twilioIntegration.js       # Twilio webhooks and Media Streams setup
+├── voiceEngine.js             # ElevenLabs TTS integration
+├── database.js                # SQLite database management routines
+├── public/
+│   └── index.html             # Frontend HTML dashboard
+├── CALLING_SETUP_GUIDE.md     # Detailed telephony integration documentation
+├── .env.exotel.example        # Environment configuration template
+└── package.json               # Dependencies and npm scripts
 ```
-├── dashboard-server.js     # Main Express server + WebSocket
-├── geminiEngine.js        # Gemini AI integration + MHT-CET knowledge
-├── exotelIntegration.js   # Real telephony calling via Exotel
-├── voiceEngine.js         # ElevenLabs TTS integration
-├── database.js            # SQLite database management
-├── public/index.html      # Frontend dashboard
-├── CALLING_SETUP_GUIDE.md # Detailed telephony setup
-└── .env.exotel.example   # Environment configuration template
-```
-
-## 🌟 Key Features in Detail
-
-### 📊 Venue Schedule Management
-- **Kolhapur District**: 5 venues (Apr 19-21)
-- **Sangli District**: 5 venues (Apr 22-25)
-- **Satara District**: 4 venues (Apr 26-27)
-- **Pune District**: 4 venues (Apr 28-30)
-- **Major Cities**: Nashik, Aurangabad, Ahmednagar (May 1-3)
-
-### 🎤 Multilingual Intelligence
-- **Language Detection**: Auto-detects student's preferred language
-- **Code-Mixing**: Natural Hinglish/Marathinglish conversations
-- **Voice Selection**: Language-appropriate TTS voices
-
-### 📈 Analytics & Monitoring
-- Real-time call status tracking
-- Language distribution analytics
-- Venue-wise registration reports
-- Character usage optimization
-
-## 🚀 Deployment
-
-### Local Development
-```bash
-node dashboard-server.js
-```
-
-### Production Deployment
-1. Set up on cloud server (AWS, Google Cloud, etc.)
-2. Configure environment variables
-3. Set up domain and SSL certificate
-4. Configure Exotel webhooks
-5. Start with process manager (PM2)
-
-## 📝 License
-
-This project is developed for Aegis Nexus AI's enterprise security incident response initiatives.
 
 ## 🤝 Contributing
+This is a private project for Aegis Nexus AI. For questions, support, or internal contributions, please contact the core development team.
 
-This is a private project for Aegis Nexus AI. For questions or support, contact the development team.
+## 📝 License
+Developed exclusively for **Aegis Nexus AI**'s enterprise security incident response initiatives.
 
 ---
-
-**🎯 Empowering Maharashtra students with AI-driven MHT-CET guidance - One call at a time!**
+<div align="center">
+  <b>🛡️ Empowering Enterprise DevOps with AI-driven Incident Response — One call at a time!</b>
+</div>

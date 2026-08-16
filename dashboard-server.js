@@ -6,7 +6,7 @@ dotenv.config({ override: true });
 import express from 'express';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
-import { initGemini, startConversation, continueConversation, getSeminarDetails, startMHTCETConversation, continueMHTCETConversation } from './geminiEngine.js';
+import { initGemini, startConversation, continueConversation, getIncidentDetails, startIncidentConversation, continueIncidentConversation } from './geminiEngine.js';
 import { speak } from './voiceEngine.js';
 import { loadContacts, saveResults, getStats } from './contactQueue.js';
 import QueueProcessor from './queueProcessor.js';
@@ -458,8 +458,8 @@ app.post('/api/outbound/start', async (req, res) => {
       intent = result.intent;
       language = result.language;
     } else {
-      // Fallback to legacy MHT-CET agent
-      const result = await startMHTCETConversation(preferredLanguage);
+      // Fallback to legacy Incident agent
+      const result = await startIncidentConversation(preferredLanguage);
       chat = result.chat;
       text = result.text;
       intent = result.intent;
@@ -502,9 +502,9 @@ app.post('/api/outbound/respond', async (req, res) => {
       let messageForGemini = message;
       if (language && language !== 'en') {
         const langName = language === 'hi' ? 'Hindi (हिंदी)' : 'Marathi (मराठी)';
-        messageForGemini = `[LANGUAGE: ${langName}] Student's message: "${message}"`;
+        messageForGemini = `[LANGUAGE: ${langName}] Engineer's message: "${message}"`;
       }
-      const result = await continueMHTCETConversation(session.chat, messageForGemini);
+      const result = await continueIncidentConversation(session.chat, messageForGemini);
       text = result.text;
       intent = result.intent;
       detectedLang = result.language;
@@ -658,8 +658,8 @@ app.post('/api/call/start', async (req, res) => {
   if (!contact) return res.status(404).json({ error: 'Contact not found' });
 
   try {
-    const seminar = getSeminarDetails();
-    const { chat, text, intent } = await startConversation(contact, seminar);
+    const incident = getIncidentDetails();
+    const { chat, text, intent } = await startConversation(contact, incident);
 
     activeSessions.set(contactId, { chat, contact, transcript: [], intent });
     activeSessions.get(contactId).transcript.push({ role: 'aria', text, time: new Date().toISOString() });
@@ -683,7 +683,7 @@ app.post('/api/call/respond', async (req, res) => {
   if (!session) return res.status(404).json({ error: 'No active session' });
 
   try {
-    session.transcript.push({ role: 'student', text: message, time: new Date().toISOString() });
+    session.transcript.push({ role: 'engineer', text: message, time: new Date().toISOString() });
 
     const { text, intent } = await continueConversation(session.chat, message);
     session.transcript.push({ role: 'aria', text, time: new Date().toISOString() });
@@ -771,7 +771,7 @@ app.get('/', (req, res) => {
 
 app.use(express.urlencoded({ extended: true })); // For Exotel form data
 
-// Webhook: Called when student answers the phone
+// Webhook: Called when engineer answers the phone
 app.post('/webhook/exotel-call-connect', async (req, res) => {
   console.log('🔗 Exotel call connected:', req.body);
   const callSid = req.body.CallSid;
@@ -783,7 +783,7 @@ app.post('/webhook/exotel-call-connect', async (req, res) => {
   }
 });
 
-// Webhook: Handles student input (DTMF digits or speech)
+// Webhook: Handles engineer input (DTMF digits or speech)
 app.post('/webhook/exotel-gather', async (req, res) => {
   console.log('👂 Exotel gather input:', req.body);
   const callSid = req.body.CallSid;
@@ -853,13 +853,13 @@ app.post('/api/twilio/status', express.urlencoded({ extended: true }), async (re
   res.send('OK');
 });
 
-// API: Start real outbound call to a student via Twilio
+// API: Start real outbound call to an engineer via Twilio
 app.post('/api/twilio/call', async (req, res) => {
   const { phone, name } = req.body;
   if (!twilioManager) return res.status(503).json({ error: 'Twilio caller not initialized' });
   if (!phone) return res.status(400).json({ error: 'Phone number required' });
   try {
-    const call = await twilioManager.makeCall({ phone, name: name || 'Student' });
+    const call = await twilioManager.makeCall({ phone, name: name || 'Engineer' });
     res.json(call);
   } catch (error) {
     console.error('❌ Failed to start Twilio call:', error);
@@ -867,7 +867,7 @@ app.post('/api/twilio/call', async (req, res) => {
   }
 });
 
-// API: Start real outbound call to a student (Exotel)
+// API: Start real outbound call to an engineer (Exotel)
 app.post('/api/exotel/call', async (req, res) => {
   const { phone, name } = req.body;
 
@@ -880,7 +880,7 @@ app.post('/api/exotel/call', async (req, res) => {
   }
 
   try {
-    const call = await exotelCaller.makeCall(phone, name || 'Student');
+    const call = await exotelCaller.makeCall(phone, name || 'Engineer');
     res.json({
       success: true,
       callSid: call.Sid,
@@ -934,7 +934,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
   const from = req.body.From; // Format: whatsapp:+919876543210
   const body = req.body.Body; // Message text
-  const senderName = req.body.ProfileName || 'Student';
+  const senderName = req.body.ProfileName || 'Engineer';
 
   if (!whatsappManager) {
     console.error('❌ WhatsApp manager not initialized');

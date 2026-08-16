@@ -38,7 +38,7 @@ export function loadContacts(csvPath, phoneColumn = 'phone') {
     contacts.push({
       id: i + 1,
       phone: cleaned,
-      name: row['name'] || row['Name'] || row['NAME'] || `Student ${i + 1}`,
+      name: row['name'] || row['Name'] || row['NAME'] || `Engineer ${i + 1}`,
       status: 'pending',   // pending | called | interested | not_interested | callback | no_answer
       rsvp: false,
       notes: '',

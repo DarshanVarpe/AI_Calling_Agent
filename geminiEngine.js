@@ -61,7 +61,7 @@ class EnhancedGeminiEngine {
     });
   }
 
-  buildMultilingualSystemPrompt(contact, seminarDetails, language = 'en') {
+  buildMultilingualSystemPrompt(contact, incidentDetails, language = 'en') {
     const languageInstructions = {
       en: "Respond primarily in English. Be warm and professional.",
       hi: "मुख्यतः हिंदी में उत्तर दें। गर्मजोशी और व्यावसायिकता बनाए रखें।",
@@ -74,26 +74,26 @@ class EnhancedGeminiEngine {
       mr: 'Marathi'
     };
 
-    return `You are Aria, an autonomous Enterprise Security & Operations Copilot calling regarding ${seminarDetails.name}.
+    return `You are Aria, an autonomous Enterprise Security & Operations Copilot calling regarding ${incidentDetails.name}.
 
 LANGUAGE CONTEXT:
 - Primary language: ${currentLangName[language] || 'English'}
 - Language instruction: ${languageInstructions[language] || languageInstructions.en}
-- If the employee responds in a different language, acknowledge it and adapt accordingly
+- If the engineer responds in a different language, acknowledge it and adapt accordingly
 - Be culturally sensitive and use appropriate professional terms
 
-YOUR GOAL: Coordinate with the employee, gather intelligence, and resolve the operational incident through natural conversation.
+YOUR GOAL: Coordinate with the engineer, gather intelligence, and resolve the operational incident through natural conversation.
 
 INCIDENT DETAILS:
-- Mission: ${seminarDetails.name}
-- Objective: ${seminarDetails.topic}
-- Date: ${seminarDetails.date}
-- Target System: ${seminarDetails.venue}
-- Playbook Link: ${seminarDetails.link}
+- Incident: ${incidentDetails.name}
+- Status: ${incidentDetails.topic}
+- Time: ${incidentDetails.date}
+- Target System: ${incidentDetails.venue}
+- Runbook Link: ${incidentDetails.link}
 
-EMPLOYEE INFO:
+ENGINEER INFO:
 - Phone: ${contact.phone}
-- Name: ${contact.name !== contact.phone ? contact.name : 'Employee (name unknown)'}
+- Name: ${contact.name !== contact.phone ? contact.name : 'Engineer (name unknown)'}
 - Preferred Language: ${currentLangName[contact.language_preference] || 'English'}
 
 AUTONOMOUS CONVERSATION FLOW:
@@ -125,7 +125,7 @@ INTENT DETECTION: Analyze their response to determine:
 - rsvp_yes: Confirms authorization to deploy the patch
 - rsvp_no: Declines automated patch deployment
 - positive_engagement: Engaging well but hasn't authorized yet
-- language_switch: Employee switched to different language mid-conversation
+- language_switch: Engineer switched to different language mid-conversation
 
 At the END of every response, add a status line:
 INTENT: {"intent": "detected_intent", "language_used": "language_code", "rsvp": true/false/null, "continue": true/false, "confidence": 0.0-1.0}
@@ -136,8 +136,8 @@ Example responses:
   }
 
   // Autonomous conversation for automated calling
-  async startAutonomousConversation(contact, seminarDetails, detectedLanguage = 'en') {
-    const systemPrompt = this.buildMultilingualSystemPrompt(contact, seminarDetails, detectedLanguage);
+  async startAutonomousConversation(contact, incidentDetails, detectedLanguage = 'en') {
+    const systemPrompt = this.buildMultilingualSystemPrompt(contact, incidentDetails, detectedLanguage);
 
     return this.makeRateLimitedRequest(async () => {
       const chat = this.model.startChat({
@@ -170,9 +170,9 @@ Example responses:
   async continueAutonomousConversation(chat, userMessage, currentLanguage = 'en') {
     return this.makeRateLimitedRequest(async () => {
       // Add context about language if it seems to have switched
-      const enhancedMessage = `Student response: "${userMessage}"
+      const enhancedMessage = `Engineer response: "${userMessage}"
 
-Note: Continue the conversation naturally. If the student's language seems different from ${currentLanguage}, acknowledge it appropriately and respond in their preferred language.`;
+Note: Continue the conversation naturally. If the engineer's language seems different from ${currentLanguage}, acknowledge it appropriately and respond in their preferred language.`;
 
       const result = await chat.sendMessage(enhancedMessage);
       const { text, intent, metadata } = this.parseEnhancedResponse(result.response.text());
@@ -218,16 +218,16 @@ Note: Continue the conversation naturally. If the student's language seems diffe
 
   // Language detection and analysis
   async detectLanguageAndIntent(userResponse, conversationContext = []) {
-    const prompt = `Analyze this student's response during a seminar marketing call:
+    const prompt = `Analyze this engineer's response during a critical incident alert call:
 
 Response: "${userResponse}"
 
 Conversation context: ${conversationContext.length} previous exchanges
 
 Analyze for:
-1. Language (en/hi/mr) - What language is the student primarily using?
+1. Language (en/hi/mr) - What language is the engineer primarily using?
 2. Intent - What do they want to communicate?
-3. Engagement level - How interested do they seem?
+3. Engagement level - How engaged do they seem?
 4. Cultural context - Any specific Indian cultural considerations?
 
 Respond ONLY with JSON:
@@ -262,9 +262,9 @@ Respond ONLY with JSON:
   async generateContextualResponse(scenario, context, language = 'en') {
     const scenarios = {
       callback_scheduling: "Generate a natural response for scheduling a callback",
-      objection_handling: "Generate a response that addresses their concern while staying positive",
-      rsvp_confirmation: "Generate an enthusiastic confirmation message for their registration",
-      polite_closure: "Generate a respectful closing when they're not interested"
+      objection_handling: "Generate a response that addresses their concern while staying professional",
+      rsvp_confirmation: "Generate a confirmation message for their patch authorization",
+      polite_closure: "Generate a respectful closing when they cannot assist right now"
     };
 
     const prompt = `Generate a natural response for this scenario: ${scenarios[scenario] || scenario}
@@ -275,7 +275,7 @@ Language: ${language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'Engli
 Requirements:
 - Keep it brief (1-2 sentences)
 - Sound natural and conversational
-- Be culturally appropriate for Indian students
+- Be culturally appropriate for Indian engineering teams
 - Match the language specified
 
 Respond with just the message text, no additional formatting.`;
@@ -322,21 +322,21 @@ export function initGemini(apiKey) {
   console.log('🤖 Gemini engine ready (gemini-2.5-flash)');
 }
 
-function buildSystemPrompt(contact, seminarDetails) {
-  return `You are Aria, an autonomous Enterprise AI Copilot calling on behalf of ${seminarDetails.name}.
+function buildSystemPrompt(contact, incidentDetails) {
+  return `You are Aria, an autonomous Enterprise AI Copilot calling regarding ${incidentDetails.name}.
 
-YOUR GOAL: Coordinate with the employee, gather intelligence, and resolve the operational incident.
+YOUR GOAL: Coordinate with the engineer, gather intelligence, and resolve the operational incident.
 
 OPERATION DETAILS:
-- Mission: ${seminarDetails.name}
-- Objective: ${seminarDetails.topic}
-- Date: ${seminarDetails.date}
-- Target System: ${seminarDetails.venue}
-- Playbook Link: ${seminarDetails.link}
+- Incident: ${incidentDetails.name}
+- Status: ${incidentDetails.topic}
+- Time: ${incidentDetails.date}
+- Target System: ${incidentDetails.venue}
+- Runbook Link: ${incidentDetails.link}
 
 CONTACT INFO:
 - Phone: ${contact.phone}
-- Name: ${contact.name !== contact.phone ? contact.name : 'the employee'}
+- Name: ${contact.name !== contact.phone ? contact.name : 'the engineer'}
 
 CONVERSATION FLOW:
 1. INTRO: Greet professionally, introduce yourself as Aria, the AI Security & Operations Copilot
@@ -360,9 +360,9 @@ Example:
 INTENT: {"intent": "ongoing", "rsvp": false, "done": false}`;
 }
 
-// ── MHT-CET OUTBOUND AGENT ────────────────────────────────────────────────
+// ── ENTERPRISE INCIDENT OUTBOUND AGENT ────────────────────────────────────────────────
 
-function buildMHTCETSystemPrompt(language = 'en') {
+function buildIncidentSystemPrompt(language = 'en') {
   const isMr = language === 'mr';
   const agentName = 'Aria';
   const agentPersonality = 'Professional, calm, like a high-tier Enterprise Security Analyst';
@@ -376,7 +376,7 @@ YOUR IDENTITY:
 
 LANGUAGE RULES:
 - Start in English
-- AUTOMATICALLY switch to Hindi if the employee speaks/asks in Hindi (हिंदी में)
+- AUTOMATICALLY switch to Hindi if the engineer speaks/asks in Hindi (हिंदी में)
 - Stay in the preferred language once detected
 
 OPENING (first message only):
@@ -397,7 +397,7 @@ ENTERPRISE PROTOCOLS YOU'RE EXECUTING:
 - Guardrails: Active
 
 3. RESPONSE ACTIONS:
-- Automated Patch Deployment (Needs employee approval)
+- Automated Patch Deployment (Needs engineer approval)
 - Escalate to Level 3 Engineering team (If requested)
 - Isolate affected servers to prevent lateral movement
 
@@ -406,7 +406,7 @@ ENTERPRISE PROTOCOLS YOU'RE EXECUTING:
 CONVERSATION RULES:
 - Keep responses SHORT (2-4 sentences) unless explicitly asked for details
 - Be specific — give actual datacenter names and status
-- When the employee asks to deploy the patch, confirm and state that the response action is executed.
+- When the engineer asks to deploy the patch, confirm and state that the response action is executed.
 - If asked something outside your knowledge, say "I will escalate this inquiry to the L3 security team."
 - Sound professional, not like reading a textbook
 
@@ -414,7 +414,7 @@ INTENT DETECTION: At END of EVERY response, add exactly this line:
 INTENT: {"intent": "interested|not_interested|callback|questions|rsvp_yes|rsvp_no|ongoing", "language_used": "en|hi|mr", "continue": true|false}`;
 }
 
-function parseMHTCETResponse(raw) {
+function parseIncidentResponse(raw) {
   // Strip Gemini 2.5 thinking tokens if they leak through
   let cleaned = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
   const intentMatch = cleaned.match(/INTENT:\s*(\{.*?\})/s);
@@ -426,9 +426,9 @@ function parseMHTCETResponse(raw) {
   return { text, intent: intentData.intent, language: intentData.language_used };
 }
 
-export async function startMHTCETConversation(language = 'en') {
+export async function startIncidentConversation(language = 'en') {
   if (!model) throw new Error('Gemini not initialized');
-  const systemPrompt = buildMHTCETSystemPrompt(language);
+  const systemPrompt = buildIncidentSystemPrompt(language);
   const chat = model.startChat({
     history: [],
     generationConfig: { temperature: 0.8, maxOutputTokens: 400 },
@@ -436,27 +436,27 @@ export async function startMHTCETConversation(language = 'en') {
 
   // Force greeting in selected language from the very first message
   const langGreetInstructions = {
-    hi: '\n\nCRITICAL: The student has selected HINDI. Your ENTIRE greeting and all future responses MUST be in Hindi (हिंदी) ONLY. Do not use even a single English word. Start greeting in Hindi now.',
-    mr: '\n\nCRITICAL: The student has selected MARATHI. Your ENTIRE greeting and all future responses MUST be in Marathi (मराठी) ONLY. Do not use even a single English word. Start greeting in Marathi now.',
+    hi: '\n\nCRITICAL: The engineer has selected HINDI. Your ENTIRE greeting and all future responses MUST be in Hindi (हिंदी) ONLY. Do not use even a single English word. Start greeting in Hindi now.',
+    mr: '\n\nCRITICAL: The engineer has selected MARATHI. Your ENTIRE greeting and all future responses MUST be in Marathi (मराठी) ONLY. Do not use even a single English word. Start greeting in Marathi now.',
     en: ''
   };
 
-  const contextMsg = `${systemPrompt}${langGreetInstructions[language] || ''}\n\n---\nNow begin. Generate Aria's warm opening greeting to the student.`;
+  const contextMsg = `${systemPrompt}${langGreetInstructions[language] || ''}\n\n---\nNow begin. Generate Aria's warm opening greeting to the engineer.`;
   const result = await chat.sendMessage(contextMsg);
-  const { text, intent, language: detectedLang } = parseMHTCETResponse(result.response.text());
+  const { text, intent, language: detectedLang } = parseIncidentResponse(result.response.text());
   return { chat, text, intent, language: language || detectedLang };
 }
 
-export async function continueMHTCETConversation(chat, userMessage) {
+export async function continueIncidentConversation(chat, userMessage) {
   const result = await chat.sendMessage(userMessage);
-  const { text, intent, language } = parseMHTCETResponse(result.response.text());
+  const { text, intent, language } = parseIncidentResponse(result.response.text());
   return { text, intent, language };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function startConversation(contact, seminarDetails) {
-  const systemPrompt = buildSystemPrompt(contact, seminarDetails);
+export async function startConversation(contact, incidentDetails) {
+  const systemPrompt = buildSystemPrompt(contact, incidentDetails);
 
   const chat = model.startChat({
     history: [],
@@ -464,7 +464,7 @@ export async function startConversation(contact, seminarDetails) {
   });
 
   // Inject system context as first user message (Gemini doesn't have system role)
-  const contextMsg = `${systemPrompt}\n\n---\nNow begin the call. Generate the opening line as Aria calling this student.`;
+  const contextMsg = `${systemPrompt}\n\n---\nNow begin the call. Generate the opening line as Aria calling this engineer.`;
   const result = await chat.sendMessage(contextMsg);
   const { text, intent } = parseResponse(result.response.text());
 
@@ -494,13 +494,13 @@ function parseResponse(raw) {
   return { text, intent };
 }
 
-export function getSeminarDetails() {
+export function getIncidentDetails() {
   return {
-    name: process.env.SEMINAR_NAME || 'Project Aegis - Enterprise Incident Response',
-    date: process.env.SEMINAR_DATE || 'Real-time',
-    topic: process.env.SEMINAR_TOPIC || 'Server Outage and AI Threat Mitigation',
-    venue: process.env.SEMINAR_VENUE || 'Cloud Infrastructure',
-    link: process.env.SEMINAR_LINK || 'https://enterprise-portal.internal',
+    name: process.env.INCIDENT_NAME || 'Project Aegis - Enterprise Incident Response',
+    date: process.env.INCIDENT_DATE || 'Real-time',
+    topic: process.env.INCIDENT_TOPIC || 'Server Outage and AI Threat Mitigation',
+    venue: process.env.INCIDENT_SYSTEM || 'Cloud Infrastructure',
+    link: process.env.INCIDENT_RUNBOOK || 'https://enterprise-portal.internal',
   };
 }
 
