@@ -165,7 +165,7 @@ class TwilioCallManager {
       // Handle no input
       if (noInput) {
         twiml.say({
-          voice: 'Polly.Joanna',
+          voice: 'Polly.Aditi',
           language: 'en-IN'
         }, 'Are you still there? Please respond.');
 
@@ -212,7 +212,7 @@ class TwilioCallManager {
       if (intent?.done) {
         // End call
         twiml.say({
-          voice: 'Polly.Joanna',
+          voice: 'Polly.Aditi',
           language: 'en-IN'
         }, aiResponse + ' Thank you for your time. Have a great day!');
 
@@ -232,7 +232,7 @@ class TwilioCallManager {
         });
 
         gather.say({
-          voice: 'Polly.Joanna',
+          voice: 'Polly.Aditi',
           language: 'en-IN'
         }, aiResponse);
 

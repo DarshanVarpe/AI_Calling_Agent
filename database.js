@@ -107,6 +107,18 @@ class AICallerDatabase {
             )
         `);
 
+        // Character usage tracking table (ElevenLabs TTS budget)
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS character_usage (
+                id TEXT PRIMARY KEY,
+                date DATE NOT NULL,
+                language TEXT NOT NULL CHECK (language IN ('en', 'hi', 'mr')),
+                character_count INTEGER NOT NULL,
+                context TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         // Create indexes for better performance
         this.db.exec(`
             CREATE INDEX IF NOT EXISTS idx_contacts_phone ON contacts(phone);
@@ -116,6 +128,7 @@ class AICallerDatabase {
             CREATE INDEX IF NOT EXISTS idx_call_queue_batch ON call_queue(batch_id);
             CREATE INDEX IF NOT EXISTS idx_call_logs_contact ON call_logs(contact_id);
             CREATE INDEX IF NOT EXISTS idx_call_logs_batch ON call_logs(batch_id);
+            CREATE INDEX IF NOT EXISTS idx_character_usage_date ON character_usage(date);
         `);
 
         console.log('✅ Database tables initialized');
