@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resource Allocation — AI Calling Platform</title>
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --accent: #7c3aed;
+    --accent2: #a78bfa;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --text: #e5e5e5;
+    --muted: #6b7280;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  .topnav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px; background: var(--surface); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topnav-brand { display: flex; align-items: center; gap: 10px; }
+  .topnav-brand .logo-dot {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--green), #06b6d4);
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+  .topnav-brand h1 { font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
+  .topnav-brand span { font-size: 11px; color: var(--muted); margin-top: 1px; display: block; }
+
+  .main { max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; margin-bottom: 22px; }
+  .panel h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; letter-spacing: -.2px; }
+  .panel p.hint { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; line-height: 1.5; }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .field input {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 9px 12px; border-radius: 8px; font-size: 13px; min-width: 180px;
+  }
+  .field input:focus { outline: none; border-color: var(--accent); }
+
+  .btn {
+    padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600; transition: all .15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #6d28d9; }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-green { background: var(--green); color: #04220f; }
+  .btn-green:hover { background: #16a34a; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; font-size: 10.5px; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  .empty { color: var(--muted); font-size: 13px; padding: 16px 4px; }
+
+  .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .badge-green { background: rgba(34,197,94,.18); color: var(--green); }
+  .badge-red { background: rgba(239,68,68,.18); color: var(--red); }
+
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 4px; }
+  .stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .stat-label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .stat-value { font-size: 24px; font-weight: 800; }
+
+  .msg { font-size: 12.5px; margin-top: 10px; }
+  .msg.ok { color: var(--green); }
+  .msg.err { color: var(--red); }
+
+  .status-line { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div class="topnav-brand">
+    <div class="logo-dot">🏥</div>
+    <div>
+      <h1>Resource Allocation</h1>
+      <span>Healthcare capacity rebalancing — ORION demo</span>
+    </div>
+  </div>
+  <div><a href="/admin" style="color:var(--muted);font-size:12px;text-decoration:none;">&larr; Back to Admin</a></div>
+</div>
+
+<div class="main">
+
+  <div class="panel">
+    <h2>1. Call a facility</h2>
+    <p class="hint">Aria calls this number, introduces herself as the Regional Hospital Command Center, and asks for beds / ICU / ventilators / staff numbers. Data is saved automatically once the call finishes gathering it.</p>
+    <div class="row">
+      <div class="field">
+        <label>Facility name</label>
+        <input id="facilityName" placeholder="e.g. City General Hospital" />
+      </div>
+      <div class="field">
+        <label>Phone number</label>
+        <input id="facilityPhone" placeholder="+91XXXXXXXXXX" />
+      </div>
+      <button class="btn btn-primary" id="callBtn" onclick="callFacility()">📞 Call Facility</button>
+    </div>
+    <div id="callMsg" class="msg"></div>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h2 style="margin:0;">2. Collected facility reports</h2>
+      <div>
+        <button class="btn btn-ghost" onclick="loadFacilities()">↻ Refresh</button>
+        <button class="btn btn-ghost" onclick="resetFacilities()">🗑 Reset</button>
+      </div>
+    </div>
+    <div id="facilitiesTable"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>3. Run allocation</h2>
+    <p class="hint">Greedy transportation-style rebalancing: for each resource type, facilities with surplus donate to facilities with deficit, largest surplus/deficit matched first. Needs at least 2 facility reports.</p>
+    <button class="btn btn-green" onclick="runAllocation()">⚡ Run Allocation</button>
+    <div id="allocationResult" style="margin-top:18px;"></div>
+  </div>
+
+</div>
+
+<script>
+async function callFacility() {
+  const name = document.getElementById('facilityName').value.trim();
+  const phone = document.getElementById('facilityPhone').value.trim();
+  const msgEl = document.getElementById('callMsg');
+  const btn = document.getElementById('callBtn');
+  if (!phone) { msgEl.className = 'msg err'; msgEl.textContent = 'Phone number is required.'; return; }
+
+  btn.disabled = true;
+  msgEl.className = 'msg'; msgEl.textContent = 'Calling…';
+  try {
+    const res = await fetch('/api/twilio/facility-call', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, name })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      msgEl.className = 'msg ok';
+      msgEl.textContent = `Call started (SID ${data.callSid}). Refresh the reports table below once the call ends.`;
+    } else {
+      msgEl.className = 'msg err';
+      msgEl.textContent = data.error || 'Call failed.';
+    }
+  } catch (e) {
+    msgEl.className = 'msg err'; msgEl.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function loadFacilities() {
+  const el = document.getElementById('facilitiesTable');
+  try {
+    const res = await fetch('/api/allocation/facilities');
+    const data = await res.json();
+    const facilities = data.facilities || [];
+    if (facilities.length === 0) {
+      el.innerHTML = '<div class="empty">No facility reports yet — place a call above.</div>';
+      return;
+    }
+    el.innerHTML = `<table>
+      <tr><th>Facility</th><th>Beds (avail/needed)</th><th>ICU (avail/needed)</th><th>Ventilators (avail/needed)</th><th>Staff</th><th>Reported</th></tr>
+      ${facilities.map(f => `
+        <tr>
+          <td>${escapeHtml(f.facility_name)}</td>
+          <td>${f.beds_available} / ${f.beds_needed}</td>
+          <td>${f.icu_available} / ${f.icu_needed}</td>
+          <td>${f.ventilators_available} / ${f.ventilators_needed}</td>
+          <td>${f.staff_on_duty}</td>
+          <td>${new Date(f.reported_at).toLocaleTimeString()}</td>
+        </tr>`).join('')}
+    </table>`;
+  } catch (e) {
+    el.innerHTML = `<div class="empty">Failed to load: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function resetFacilities() {
+  if (!confirm('Clear all collected facility reports?')) return;
+  await fetch('/api/allocation/facilities', { method: 'DELETE' });
+  loadFacilities();
+  document.getElementById('allocationResult').innerHTML = '';
+}
+
+async function runAllocation() {
+  const el = document.getElementById('allocationResult');
+  el.innerHTML = '<div class="empty">Computing…</div>';
+  try {
+    const res = await fetch('/api/allocation/run', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) { el.innerHTML = `<div class="empty">${escapeHtml(data.error || 'Failed')}</div>`; return; }
+
+    if (data.note) {
+      el.innerHTML = `<div class="empty">${escapeHtml(data.note)}</div>`;
+      return;
+    }
+
+    let html = `<div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Unmet demand before</div><div class="stat-value">${data.totalUnmetBefore}</div></div>
+      <div class="stat-card"><div class="stat-label">Unmet demand after</div><div class="stat-value">${data.totalUnmetAfter}</div></div>
+      <div class="stat-card"><div class="stat-label">Resolved</div><div class="stat-value">${data.resolvedPercentage}%</div></div>
+    </div>`;
+
+    if (data.transfers.length === 0) {
+      html += `<div class="empty" style="margin-top:14px;">No transfers needed — every facility already covers its own demand.</div>`;
+    } else {
+      html += `<table style="margin-top:14px;">
+        <tr><th>Resource</th><th>From</th><th>To</th><th>Amount</th></tr>
+        ${data.transfers.map(t => `
+          <tr>
+            <td>${escapeHtml(t.resource)}</td>
+            <td>${escapeHtml(t.from)}</td>
+            <td>${escapeHtml(t.to)}</td>
+            <td><span class="badge badge-green">${t.amount}</span></td>
+          </tr>`).join('')}
+      </table>`;
+    }
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerHTML = `<div class="empty">Failed: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+loadFacilities();
+</script>
+
+</body>
+</html>

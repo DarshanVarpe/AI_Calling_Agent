@@ -119,6 +119,24 @@ class AICallerDatabase {
             )
         `);
 
+        // Facility resource reports (Healthcare Resource Allocation demo)
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS facility_reports (
+                id TEXT PRIMARY KEY,
+                facility_name TEXT NOT NULL,
+                phone TEXT,
+                beds_available INTEGER DEFAULT 0,
+                beds_needed INTEGER DEFAULT 0,
+                icu_available INTEGER DEFAULT 0,
+                icu_needed INTEGER DEFAULT 0,
+                ventilators_available INTEGER DEFAULT 0,
+                ventilators_needed INTEGER DEFAULT 0,
+                staff_on_duty INTEGER DEFAULT 0,
+                call_sid TEXT,
+                reported_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         // Create indexes for better performance
         this.db.exec(`
             CREATE INDEX IF NOT EXISTS idx_contacts_phone ON contacts(phone);
@@ -370,6 +388,39 @@ class AICallerDatabase {
     // Utility method to close database connection
     close() {
         this.db.close();
+    }
+
+    // ── Facility resource reports (Healthcare Resource Allocation demo) ──
+    async saveFacilityReport(report) {
+        const id = `facility_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        this.db.prepare(`
+            INSERT INTO facility_reports (
+                id, facility_name, phone, beds_available, beds_needed,
+                icu_available, icu_needed, ventilators_available, ventilators_needed,
+                staff_on_duty, call_sid
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            id,
+            report.facility_name || 'Unknown Facility',
+            report.phone || null,
+            report.beds_available || 0,
+            report.beds_needed || 0,
+            report.icu_available || 0,
+            report.icu_needed || 0,
+            report.ventilators_available || 0,
+            report.ventilators_needed || 0,
+            report.staff_on_duty || 0,
+            report.callSid || null
+        );
+        return id;
+    }
+
+    async getFacilityReports() {
+        return this.db.prepare('SELECT * FROM facility_reports ORDER BY reported_at DESC').all();
+    }
+
+    async clearFacilityReports() {
+        this.db.prepare('DELETE FROM facility_reports').run();
     }
 
     // Get database statistics

@@ -21,6 +21,7 @@ import { BusinessManager } from './businessManager.js';
 import { startCall as agentStartCall, continueCall as agentContinueCall, parseAgentResponse } from './agentEngine.js';
 import { startInboundCall, continueInboundCall, endInboundCall, getInboundStats, searchInboundKB, listPackages, listEvents } from './inboundAgents.js';
 import { attachMediaStreamHandler, generateMediaStreamTwiML } from './twilioMediaStream.js';
+import { computeAllocation } from './resourceAllocator.js';
 
 import fs from 'fs';
 import path from 'path';
@@ -891,6 +892,76 @@ app.post('/api/exotel/call', async (req, res) => {
     console.error('❌ Failed to start call:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+// ── HEALTHCARE RESOURCE ALLOCATION DEMO (ORION hackathon) ──────────────────
+
+// API: Call a facility coordinator to gather beds/ICU/ventilator/staff numbers
+app.post('/api/twilio/facility-call', async (req, res) => {
+  const { phone, name } = req.body;
+  if (!twilioManager) return res.status(503).json({ error: 'Twilio caller not initialized' });
+  if (!phone) return res.status(400).json({ error: 'Phone number required' });
+  try {
+    const call = await twilioManager.makeFacilityCall({ phone, name: name || 'Facility' });
+    res.json(call);
+  } catch (error) {
+    console.error('❌ Failed to start facility call:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/twilio/facility-voice-start', express.urlencoded({ extended: true }), async (req, res) => {
+  console.log('🏥 Facility call connected:', req.body.CallSid);
+  if (!twilioManager) return res.status(503).send('Twilio not initialized');
+  const contact = { phone: req.body.To || req.body.From, name: 'Facility' };
+  const twiml = await twilioManager.generateFacilityStartTwiML(req.body.CallSid, contact);
+  res.type('text/xml').send(twiml);
+});
+
+app.post('/api/twilio/facility-voice-continue', express.urlencoded({ extended: true }), async (req, res) => {
+  console.log('🏥 Facility gather input for:', req.body.CallSid);
+  if (!twilioManager) return res.status(503).send('Twilio not initialized');
+  const noInput = req.query.noInput === 'true';
+  const twiml = await twilioManager.generateFacilityContinueTwiML(req.body.CallSid, req.body.SpeechResult, noInput);
+  res.type('text/xml').send(twiml);
+});
+
+// API: List all collected facility reports
+app.get('/api/allocation/facilities', async (req, res) => {
+  if (!database) return res.status(503).json({ error: 'Database not initialized' });
+  try {
+    const facilities = await database.getFacilityReports();
+    res.json({ facilities });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// API: Compute the resource rebalancing plan across all reported facilities
+app.post('/api/allocation/run', async (req, res) => {
+  if (!database) return res.status(503).json({ error: 'Database not initialized' });
+  try {
+    const facilities = await database.getFacilityReports();
+    const result = computeAllocation(facilities);
+    res.json({ facilities, ...result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// API: Reset collected facility reports (demo convenience)
+app.delete('/api/allocation/facilities', async (req, res) => {
+  if (!database) return res.status(503).json({ error: 'Database not initialized' });
+  try {
+    await database.clearFacilityReports();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/allocation', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'allocation.html'));
 });
 
 // API: Start bulk calling campaign

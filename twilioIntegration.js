@@ -2,11 +2,21 @@
 
 import twilio from 'twilio';
 import dotenv from 'dotenv';
-import { startConversation, continueConversation, getIncidentDetails } from './geminiEngine.js';
+import { startConversation, continueConversation, getIncidentDetails, startFacilityConversation, continueFacilityConversation } from './geminiEngine.js';
 import LanguageEngine from './languageEngine.js';
 import AICallerDatabase from './database.js';
 
 dotenv.config();
+
+// Twilio gives up waiting on a Gather action webhook after ~15s and plays its
+// own "application error" message. Gemini calls have no built-in timeout, so
+// cap them well under that deadline and fall back gracefully instead.
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms))
+  ]);
+}
 
 class TwilioCallManager {
   constructor() {
@@ -184,16 +194,18 @@ class TwilioCallManager {
       // Get AI response
       if (!callState.chat) {
         // First conversation - need to initialize
-        const { chat, text, intent } = await startConversation(
-          callState.contact,
-          getIncidentDetails()
+        const { chat } = await withTimeout(
+          startConversation(callState.contact, getIncidentDetails()),
+          6000,
+          'Gemini startConversation'
         );
         callState.chat = chat;
       }
 
-      const { text: aiResponse, intent } = await continueConversation(
-        callState.chat,
-        engineerSpeech
+      const { text: aiResponse, intent } = await withTimeout(
+        continueConversation(callState.chat, engineerSpeech),
+        6000,
+        'Gemini continueConversation'
       );
 
       // Save to conversation history
@@ -255,6 +267,149 @@ class TwilioCallManager {
 
       return twiml.toString();
     }
+  }
+
+  /**
+   * Healthcare Resource Allocation demo — call a facility coordinator to
+   * gather current capacity numbers (beds/ICU/ventilators/staff).
+   */
+  async makeFacilityCall(contact) {
+    if (!this.client) {
+      throw new Error('Twilio not configured');
+    }
+
+    console.log(`🏥 Initiating facility call to ${contact.name} (${contact.phone})`);
+
+    const call = await this.client.calls.create({
+      to: contact.phone,
+      from: this.phoneNumber,
+      url: `${process.env.PUBLIC_URL}/api/twilio/facility-voice-start`,
+      statusCallback: `${process.env.PUBLIC_URL}/api/twilio/status`,
+      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+      statusCallbackMethod: 'POST',
+      timeout: 30,
+      machineDetection: 'Enable',
+      machineDetectionTimeout: 5000
+    });
+
+    this.activeCalls.set(call.sid, {
+      callSid: call.sid,
+      contact,
+      startTime: new Date(),
+      conversationHistory: [],
+      chat: null,
+      mode: 'facility'
+    });
+
+    return { success: true, callSid: call.sid, status: call.status };
+  }
+
+  async generateFacilityStartTwiML(callSid, contact) {
+    const VoiceResponse = twilio.twiml.VoiceResponse;
+    const twiml = new VoiceResponse();
+
+    if (!this.activeCalls.has(callSid)) {
+      this.activeCalls.set(callSid, {
+        callSid, contact, startTime: new Date(), conversationHistory: [], chat: null, mode: 'facility'
+      });
+    }
+
+    // Static opening line — no Gemini call here. The security-incident flow
+    // proved that calling Gemini on voice-start risks the webhook itself
+    // timing out; the chat gets lazily created on the first continue instead.
+    const intro = "Hello, this is Aria calling from the Regional Hospital Command Center. " +
+      "I need a quick update on your current capacity. Could you tell me how many general beds " +
+      "and ICU beds you have available, how many patients are waiting for each, and how many " +
+      "ventilators and staff you have on duty?";
+
+    const gather = twiml.gather({
+      input: 'speech',
+      action: '/api/twilio/facility-voice-continue',
+      method: 'POST',
+      timeout: 8,
+      speechTimeout: 'auto',
+      language: 'en-IN',
+      hints: 'beds, ICU, ventilators, staff, patients, available, needed'
+    });
+    gather.say({ voice: 'Polly.Aditi', language: 'en-IN' }, intro);
+    twiml.redirect('/api/twilio/facility-voice-continue?noInput=true');
+
+    return twiml.toString();
+  }
+
+  async generateFacilityContinueTwiML(callSid, facilitySpeech, noInput = false) {
+    const VoiceResponse = twilio.twiml.VoiceResponse;
+    const twiml = new VoiceResponse();
+
+    const callState = this.activeCalls.get(callSid);
+    if (!callState) {
+      twiml.say('Sorry, there was an error. Goodbye.');
+      twiml.hangup();
+      return twiml.toString();
+    }
+
+    try {
+      if (noInput) {
+        twiml.say({ voice: 'Polly.Aditi', language: 'en-IN' }, 'Are you still there? Please share the numbers.');
+        const gather = twiml.gather({
+          input: 'speech',
+          action: '/api/twilio/facility-voice-continue',
+          method: 'POST',
+          timeout: 6,
+          speechTimeout: 'auto',
+          language: 'en-IN'
+        });
+        // If this second attempt also gets no input, end gracefully instead
+        // of leaving Twilio to fall through with no further verb.
+        twiml.say({ voice: 'Polly.Aditi', language: 'en-IN' }, "I couldn't hear a response — I'll try calling back later. Goodbye.");
+        twiml.hangup();
+        return twiml.toString();
+      }
+
+      // First real reply on this call — establish the Gemini chat context now.
+      if (!callState.chat) {
+        const { chat } = await withTimeout(
+          startFacilityConversation(callState.contact),
+          6000,
+          'Gemini startFacilityConversation'
+        );
+        callState.chat = chat;
+      }
+
+      const { text, intent, data } = await withTimeout(
+        continueFacilityConversation(callState.chat, facilitySpeech),
+        6000,
+        'Gemini continueFacilityConversation'
+      );
+
+      if (data) {
+        await this.db.saveFacilityReport({ ...data, phone: callState.contact.phone, callSid });
+      }
+
+      if (intent?.done) {
+        twiml.say({ voice: 'Polly.Aditi', language: 'en-IN' }, `${text} Thank you, stay safe.`);
+        twiml.hangup();
+        this.activeCalls.delete(callSid);
+      } else {
+        const gather = twiml.gather({
+          input: 'speech',
+          action: '/api/twilio/facility-voice-continue',
+          method: 'POST',
+          timeout: 6,
+          speechTimeout: 'auto',
+          language: 'en-IN'
+        });
+        gather.say({ voice: 'Polly.Aditi', language: 'en-IN' }, text);
+        twiml.redirect('/api/twilio/facility-voice-continue?noInput=true');
+      }
+    } catch (error) {
+      console.error(`❌ Error in facility conversation: ${error.message}`);
+      twiml.say('Sorry, I encountered an error. Please try again later. Goodbye.');
+      twiml.hangup();
+      this.activeCalls.delete(callSid);
+    }
+
+    return twiml.toString();
   }
 
   /**

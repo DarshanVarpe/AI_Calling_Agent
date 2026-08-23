@@ -316,10 +316,10 @@ let model = null;
 export function initGemini(apiKey) {
   genAI = new GoogleGenerativeAI(apiKey);
   model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.1-flash-lite',
     generationConfig: { temperature: 0.8, maxOutputTokens: 400 },
   });
-  console.log('🤖 Gemini engine ready (gemini-2.5-flash)');
+  console.log('🤖 Gemini engine ready (gemini-3.1-flash-lite)');
 }
 
 function buildSystemPrompt(contact, incidentDetails) {
@@ -502,6 +502,79 @@ export function getIncidentDetails() {
     venue: process.env.INCIDENT_SYSTEM || 'Cloud Infrastructure',
     link: process.env.INCIDENT_RUNBOOK || 'https://enterprise-portal.internal',
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Healthcare Resource Allocation demo (ORION hackathon problem statement #2)
+// Aria calls a facility coordinator to gather current capacity numbers so
+// resourceAllocator.js can compute a cross-facility rebalancing plan.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildHealthcareSystemPrompt(contact) {
+  return `You are Aria, an AI Resource Coordinator calling on behalf of a Regional Hospital Command Center that rebalances scarce medical resources across a network of hospitals in real time.
+
+FACILITY CONTACT: ${contact.name} (${contact.phone})
+
+YOUR GOAL: In one short call, find out this facility's current numbers for:
+1. General beds available, and general beds needed (patients currently waiting for a bed)
+2. ICU beds available, and ICU beds needed
+3. Ventilators available, and ventilators needed
+4. Staff currently on duty
+
+CONVERSATION FLOW:
+1. Greet briefly and professionally, introduce yourself as Aria from the Regional Hospital Command Center.
+2. Ask for the numbers above — you may group them into 2-3 questions instead of asking one at a time, to keep the call short.
+3. Accept estimates or rounded numbers; if they don't know a number, treat it as 0.
+4. Once you have ALL the numbers, thank them briefly and end the call.
+
+RESPONSE RULES:
+- Keep responses SHORT (2-3 sentences), natural and professional, not robotic.
+- Never ask the same question more than twice — if they can't answer, move on with 0.
+- Confirm the facility's name early in the call if you don't already have it.
+
+At the END of every response, add a status line:
+INTENT: {"intent": "ongoing", "done": false}
+
+Once you have collected ALL the numbers and are ending the call, use "done": true AND add a second line with everything you collected:
+DATA: {"facility_name": "...", "beds_available": 0, "beds_needed": 0, "icu_available": 0, "icu_needed": 0, "ventilators_available": 0, "ventilators_needed": 0, "staff_on_duty": 0}`;
+}
+
+function parseFacilityResponse(raw) {
+  const intentMatch = raw.match(/INTENT:\s*(\{.*?\})/s);
+  let intent = { intent: 'ongoing', done: false };
+  if (intentMatch) {
+    try { intent = JSON.parse(intentMatch[1]); } catch (_) {}
+  }
+
+  const dataMatch = raw.match(/DATA:\s*(\{.*?\})/s);
+  let data = null;
+  if (dataMatch) {
+    try { data = JSON.parse(dataMatch[1]); } catch (_) {}
+  }
+
+  const text = raw.replace(/\nINTENT:[\s\S]*$/, '').trim();
+  return { text, intent, data };
+}
+
+export async function startFacilityConversation(contact) {
+  const systemPrompt = buildHealthcareSystemPrompt(contact);
+
+  const chat = model.startChat({
+    history: [],
+    generationConfig: { temperature: 0.7, maxOutputTokens: 300 },
+  });
+
+  const contextMsg = `${systemPrompt}\n\n---\nNow begin the call. Generate Aria's opening line.`;
+  const result = await chat.sendMessage(contextMsg);
+  const { text, intent, data } = parseFacilityResponse(result.response.text());
+
+  return { chat, text, intent, data };
+}
+
+export async function continueFacilityConversation(chat, facilitySpeech) {
+  const result = await chat.sendMessage(facilitySpeech);
+  const { text, intent, data } = parseFacilityResponse(result.response.text());
+  return { text, intent, data };
 }
 
 // Export enhanced engine for new automation system
