@@ -1,167 +1,119 @@
 <div align="center">
-  <h1>🛡️ Aegis Nexus AI Voice Agent</h1>
-  <p><strong>An advanced AI-powered voice calling system for Enterprise Security Incident Response.</strong></p>
-  <p>Built to instantly reach on-call engineers with personalized alerts, diagnose server outages, and acquire patch authorizations using real-time conversational AI.</p>
+  <h1>🏥 Aria: Healthcare Resource Allocation AI Voice Agent</h1>
+  <p><strong>Winner / Entry for Orion Global Hackathon • Problem Statement #2</strong></p>
+  <p>An autonomous AI voice calling system that instantly coordinates hospital beds, ICUs, and ventilators across regional facilities during mass-casualty surges—using real-time phone calls and a greedy optimization engine.</p>
 </div>
 
 ---
 
 ## 📖 Table of Contents
-- [🚀 Features](#-features)
+- [🚀 The Problem & Our Solution](#-the-problem--our-solution)
 - [🏗️ System Architecture](#-system-architecture)
+- [⚙️ How the Optimization Works](#-how-the-optimization-works)
 - [🛠️ Tech Stack](#️-tech-stack)
-- [📋 Prerequisites](#-prerequisites)
-- [⚡ Quick Start](#-quick-start)
-- [💻 Available Scripts](#-available-scripts)
-- [📞 Telephony Setup (Production)](#-telephony-setup-production)
-- [🎯 How It Works](#-how-it-works)
-- [📁 Project Structure](#-project-structure)
-- [🤝 Contributing](#-contributing)
+- [✨ Key Features](#-key-features)
+- [📋 Prerequisites & Quick Start](#-prerequisites--quick-start)
+- [🎯 The Live Demo Flow](#-the-live-demo-flow)
+- [🚀 Roadmap](#-roadmap)
 - [📝 License](#-license)
 
-## 🚀 Features
+## 🚀 The Problem & Our Solution
 
-### 🤖 AI-Powered Conversations
-- **Aria** - The autonomous Enterprise Security Copilot.
-- **Intelligent Diagnosis**: Powered by **Google Gemini 2.0 Flash** for accurate incident understanding.
-- **Multilingual Support**: Natural language processing in English, Hindi, and Marathi to communicate seamlessly with diverse engineering teams (code-mixing with Hinglish/Marathinglish).
+**The Problem:** During a surge (mass-casualty event, outbreak, or flood), hospitals in the same region often don't know each other's real-time capacity. One facility is overwhelmed and turning patients away, while another 10km down the road has empty beds and idle ventilators. Data collection relies on manual phone calls, spreadsheets, and emails, which breaks down exactly when it matters most.
 
-### 📍 Incident-Based Alerting
-- Connects directly to server health monitoring.
-- Diagnoses latency, server outages, or security breaches.
-- Provides specific system node details and requests patch authorizations.
+**Our Approach (Aria):** Aria calls, and the system optimizes.
+Aria is an autonomous AI voice agent. She phones each facility coordinator directly. **No app to install, no form, no dashboard login on their end.** She has a natural conversation, asking for their current beds, ICU, ventilator, and staff numbers. 
 
-### 📞 Real Telephony Integration
-- **Cloud Telephony**: Native integrations with **Exotel & Twilio** for actual phone calls.
-- **Automated Escalation**: Wakes up on-call engineers and manages escalations (L1/L2/L3) based on responsiveness.
-- **Live Monitoring**: Real-time call monitoring and analytics via WebSocket dashboard.
-
-### 🔊 Premium Voice Technology
-- **High-Quality TTS**: Integrated with **ElevenLabs TTS** with multilingual voices.
-- **Low Latency**: Optimized audio generation for critical, high-stress scenarios.
+Once reports are collected, our operations-research allocation engine computes the optimal rebalancing. Command-center staff see the transfer plan on a live web dashboard.
 
 ## 🏗️ System Architecture
 
+Our platform is composed of 4 main layers working in real-time:
+
+1. **Call Layer (Twilio):** Handles real outbound phone calls, Twilio's native speech recognition, and Voice (TTS).
+2. **Reasoning Layer (Google Gemini):** Maintains natural conversational state and extracts structured numerical data (bed counts, ventilators) from natural speech in real-time.
+3. **Data Layer (SQLite):** Automatically saves extracted capacity data as the call progresses.
+4. **Optimization Layer (Greedy Heuristic):** A custom algorithm that calculates resource transfers and renders them to the Live Dashboard.
+
 ```mermaid
 graph TD
-    A[On-Call Roster / Dashboard] -->|Triggers Alert| B(Backend Service - Node.js)
-    B -->|Generates Prompt| C{Gemini 2.0 Flash}
-    C -->|AI Response| D[ElevenLabs TTS]
-    D -->|Audio Stream| E{Telephony Gateway}
-    E -->|Exotel API| F[Engineer's Phone]
-    E -->|Twilio Media Streams| F
-    F -->|Voice Input| E
+    A[Dashboard Command Center] -->|Initiates Call| B(Node.js Backend)
+    B -->|Generates Prompt| C{Google Gemini}
+    C -->|AI Conversational Response| D[TTS Engine]
+    D -->|Audio Stream| E{Twilio}
+    E -->|Real Phone Call| F[Hospital Coordinator]
+    F -->|Natural Voice Input| E
     E -->|Transcribed Text| C
-    B -->|WebSocket Updates| G[Live Admin Dashboard]
-    B -->|Persists Data| H[(SQLite Database)]
+    C -->|Extracts Numbers| G[(SQLite Database)]
+    G -->|Runs Allocation Engine| H[Live Transfer Plan Dashboard]
 ```
+
+## ⚙️ How the Optimization Works
+
+For each resource type (General Beds, ICUs, Ventilators) independently, we compute every facility's balance (`available` minus `needed`). 
+- Facilities split into **Donors** (surplus) and **Receivers** (deficit).
+- Both lists are sorted largest-first.
+- The algorithm matches Donors to Receivers, transferring the smaller of the two amounts, repeating until every surplus or deficit is resolved.
+
+**Why a Greedy Algorithm?** Speed and Explainability. A command-center operator needs to trust and act on a transfer plan in seconds during a live crisis. A greedy heuristic gives a fast, deterministic, and auditable answer instantly.
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Node.js, Express, WebSocket (`ws`)
-- **AI Engine**: Google Gemini API (`@google/generative-ai`)
-- **Voice / TTS**: ElevenLabs TTS (`elevenlabs`)
-- **Telephony**: Exotel Cloud API, Twilio Webhooks & Media Streams (`twilio`)
-- **Database**: SQLite with `better-sqlite3`
-- **Frontend**: Vanilla JS, HTML5, CSS3 with a modern Dark UI
+- **Backend Core**: Node.js, Express.js
+- **Real-Time Updates**: WebSockets (`ws`)
+- **AI & Reasoning**: Google Gemini API (`@google/generative-ai`)
+- **Voice & Telephony**: Twilio Voice, Twilio Media Streams, ElevenLabs
+- **Database**: SQLite (`better-sqlite3`)
+- **Frontend Dashboard**: Vanilla JavaScript, HTML5, CSS3
 
-## 📋 Prerequisites
+## ✨ Key Features
 
-Before you begin, ensure you have met the following requirements:
-- **Node.js** v18+ installed on your machine.
-- An active internet connection.
-- API keys for the following services:
-  - **Google Gemini API**
-  - **ElevenLabs API**
-  - **Exotel / Twilio** (required only for real, outbound calling)
+- **Zero Onboarding**: Any facility with a working phone can participate immediately.
+- **Speed**: Replaces chaotic email chains and manual spreadsheet reconciliation with a unified API call.
+- **Multilingual Foundation**: Built on an engine that supports English, Hindi, and Marathi, making it viable for diverse regional medical staff.
+- **Extensible Architecture**: The underlying telephony and reasoning engine is domain-agnostic and can be repurposed for other immediate-response sectors.
 
-## ⚡ Quick Start
+## 📋 Prerequisites & Quick Start
 
-### 1. Clone & Install
-```bash
-git clone https://github.com/beutkarshh/CD-Calling-Agents.git
-cd CD-Calling-Agents
-npm install
-```
+### Prerequisites
+- Node.js v18+
+- Google Gemini API Key
+- Twilio / Exotel API credentials (for real calls)
+- ElevenLabs API Key (optional, for premium voice)
 
-### 2. Environment Setup
-Copy the example environment file and configure your API keys:
-```bash
-cp .env.exotel.example .env
-```
-Edit the `.env` file and add your credentials for Gemini, ElevenLabs, and your chosen Telephony provider.
+### Installation
+1. Clone the repository and install dependencies:
+   ```bash
+   git clone <your-repo-url>
+   cd AI_Calling_Agent
+   npm install
+   ```
+2. Set up your environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your Gemini, Twilio, and ElevenLabs API keys
+   ```
+3. Start the Dashboard Server:
+   ```bash
+   npm run dashboard
+   ```
+4. Open your browser to `http://localhost:3001` to view the Live Command Center.
 
-### 3. Start the System
-You can start the main dashboard server by running:
-```bash
-npm run dashboard
-```
-Then, open your browser and navigate to `http://localhost:3001` to view the live dashboard.
+## 🎯 The Live Demo Flow
 
-## 💻 Available Scripts
+1. Operator enters a facility name and number, and clicks **Call Facility**.
+2. **Aria Dials out**: *"Hello, this is Aria calling from the Regional Hospital Command Center. I need a quick update on your current capacity..."*
+3. The coordinator answers naturally.
+4. Gemini extracts the numbers mid-conversation and ends the call.
+5. The operator clicks **Run Allocation** on the dashboard.
+6. The transfer plan is rendered on screen (e.g., "12 beds move from City General to Sunrise").
 
-The project includes several built-in scripts for testing and running the application (defined in `package.json`):
+## 🚀 Roadmap
 
-- `npm start` - Starts the enhanced system automation.
-- `npm run dashboard` - Runs the main Express server and WebSocket for the live dashboard.
-- `npm run simulate` - Runs a local simulation of the calling system (useful for testing without real phone calls).
-- `npm run test` / `npm run test-batch` - Runs the multilingual automation tests.
-- `npm run test-system` - Starts the enhanced system in test mode.
-
-## 📞 Telephony Setup (Production)
-
-### For Local / Browser-Based Testing
-The system works out of the box for browser-based testing using text-to-speech simulations without incurring telephony costs.
-
-### For Real Phone Calls
-To set up actual outbound incident alerting, you must integrate with a telephony provider.
-Follow our detailed **[Calling Setup Guide](CALLING_SETUP_GUIDE.md)** for step-by-step instructions.
-
-**Brief Exotel Setup:**
-1. Sign up at [Exotel](https://my.exotel.com).
-2. Obtain your **Account SID**, **API Key**, **API Token**, and **Exophone (Phone Number)**.
-3. Add these credentials to your `.env` file.
-4. Expose your local server to the public internet using [ngrok](https://ngrok.com/) (e.g., `ngrok http 3001`) and configure your webhooks.
-
-## 🎯 How It Works
-
-### The On-Call Engineer Experience
-1. **📞 Incident Trigger**: An automated call is initiated from Aegis Nexus AI (Aria) regarding a critical incident (e.g., database latency).
-2. **🗣️ Natural Conversation**: The AI speaks naturally in the engineer's preferred language (English, Hindi, or Marathi).
-3. **📍 Diagnosis Delivered**: "The database cluster in us-east-1 is experiencing high latency."
-4. **🎯 Patch Authorization requested**: "Do you authorize the automated rollback?"
-5. **✅ System Action**: The engineer verbally approves or declines. The system records the authorization and proceeds accordingly.
-
-### The System Flow
-1. **Roster Import**: Upload a CSV with on-call engineer contact details.
-2. **Automated Alerting**: The system traverses the escalation matrix, dialing engineers sequentially.
-3. **AI Orchestration**: Gemini processes the real-time conversation and formulates dynamic responses.
-4. **Results Tracking**: Everything is logged in the SQLite database, providing analytics on response times, authorization rates, and call outcomes via the live dashboard.
-
-## 📁 Project Structure
-
-```text
-CD-Calling-Agents/
-├── dashboard-server.js        # Main Express server and WebSocket implementation
-├── geminiEngine.js            # Gemini AI integration and Incident Knowledge base
-├── exotelIntegration.js       # Real telephony calling logic via Exotel
-├── twilioIntegration.js       # Twilio webhooks and Media Streams setup
-├── voiceEngine.js             # ElevenLabs TTS integration
-├── database.js                # SQLite database management routines
-├── public/
-│   └── index.html             # Frontend HTML dashboard
-├── CALLING_SETUP_GUIDE.md     # Detailed telephony integration documentation
-├── .env.exotel.example        # Environment configuration template
-└── package.json               # Dependencies and npm scripts
-```
-
-## 🤝 Contributing
-This is a private project for Aegis Nexus AI. For questions, support, or internal contributions, please contact the core development team.
+While the current system is highly functional, our next steps for enterprise-scale deployment include:
+- **LP/MIP Optimization**: Evolving from a greedy heuristic to a full linear/mixed-integer program for provably optimal transfers at large scale.
+- **Explicit Confirmation**: Asking the caller to verbally confirm extracted numbers ("I heard 5 ICUs, is that correct?") before committing to the database.
+- **Joint Optimization**: Factoring in transport distance and travel times, rather than treating resources independently.
 
 ## 📝 License
-Developed exclusively for **Aegis Nexus AI**'s enterprise security incident response initiatives.
-
----
-<div align="center">
-  <b>🛡️ Empowering Enterprise DevOps with AI-driven Incident Response — One call at a time!</b>
-</div>
+Developed for the Orion Global Hackathon.
