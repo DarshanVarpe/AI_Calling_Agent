@@ -1,119 +1,126 @@
 <div align="center">
-  <h1>🏥 Aria: Healthcare Resource Allocation AI Voice Agent</h1>
-  <p><strong>Winner / Entry for Orion Global Hackathon • Problem Statement #2</strong></p>
-  <p>An autonomous AI voice calling system that instantly coordinates hospital beds, ICUs, and ventilators across regional facilities during mass-casualty surges—using real-time phone calls and a greedy optimization engine.</p>
+  <h1>🏥 Aria: Autonomous Healthcare Resource Allocation System</h1>
+  <p><strong>Enterprise-grade AI voice agent designed to autonomously balance regional hospital resources (beds, ICUs, ventilators) during mass-casualty events using real-time telephony and deterministic optimization heuristics.</strong></p>
 </div>
 
 ---
 
 ## 📖 Table of Contents
-- [🚀 The Problem & Our Solution](#-the-problem--our-solution)
-- [🏗️ System Architecture](#-system-architecture)
-- [⚙️ How the Optimization Works](#-how-the-optimization-works)
-- [🛠️ Tech Stack](#️-tech-stack)
-- [✨ Key Features](#-key-features)
-- [📋 Prerequisites & Quick Start](#-prerequisites--quick-start)
-- [🎯 The Live Demo Flow](#-the-live-demo-flow)
-- [🚀 Roadmap](#-roadmap)
-- [📝 License](#-license)
+- [Executive Summary](#executive-summary)
+- [Real-World Problem & Impact](#real-world-problem--impact)
+- [System Architecture & Data Flow](#system-architecture--data-flow)
+- [Telephony & Real-Time Audio Pipeline](#telephony--real-time-audio-pipeline)
+- [The Resource Rebalancing Algorithm](#the-resource-rebalancing-algorithm)
+- [Database & Concurrency](#database--concurrency)
+- [Multilingual Capabilities](#multilingual-capabilities)
+- [Deployment & Configuration](#deployment--configuration)
+- [Future Roadmap](#future-roadmap)
 
-## 🚀 The Problem & Our Solution
+## Executive Summary
 
-**The Problem:** During a surge (mass-casualty event, outbreak, or flood), hospitals in the same region often don't know each other's real-time capacity. One facility is overwhelmed and turning patients away, while another 10km down the road has empty beds and idle ventilators. Data collection relies on manual phone calls, spreadsheets, and emails, which breaks down exactly when it matters most.
+Aria is a complete, real-time command center platform that replaces manual capacity data collection with an autonomous conversational AI. Instead of relying on hospital administrators to install apps, fill out web forms, or maintain error-prone spreadsheets during a crisis, the system dials them via standard phone lines. 
 
-**Our Approach (Aria):** Aria calls, and the system optimizes.
-Aria is an autonomous AI voice agent. She phones each facility coordinator directly. **No app to install, no form, no dashboard login on their end.** She has a natural conversation, asking for their current beds, ICU, ventilator, and staff numbers. 
+Through natural language, Aria converses with coordinators, extracts precise numerical data regarding resource deficits and surpluses, and feeds this into a deterministic Operations Research engine to instantly output an actionable regional transfer plan.
 
-Once reports are collected, our operations-research allocation engine computes the optimal rebalancing. Command-center staff see the transfer plan on a live web dashboard.
+## Real-World Problem & Impact
 
-## 🏗️ System Architecture
+During regional surges—such as mass-casualty events, localized outbreaks, or natural disasters—the primary bottleneck is **information asymmetry**. 
+- **The Breakdown:** Facility A is overwhelmed, while Facility B (10km away) has idle ventilators and empty beds.
+- **The Status Quo:** Command centers attempt to reconcile capacity via phone trees and static emails, a process that severely lags behind real-time medical needs.
+- **The Aria Solution:** Aria eliminates friction by engaging via standard telephone networks (zero-onboarding for end-users). It scales to hundreds of parallel calls, completing a regional capacity census in minutes rather than hours.
 
-Our platform is composed of 4 main layers working in real-time:
+## System Architecture & Data Flow
 
-1. **Call Layer (Twilio):** Handles real outbound phone calls, Twilio's native speech recognition, and Voice (TTS).
-2. **Reasoning Layer (Google Gemini):** Maintains natural conversational state and extracts structured numerical data (bed counts, ventilators) from natural speech in real-time.
-3. **Data Layer (SQLite):** Automatically saves extracted capacity data as the call progresses.
-4. **Optimization Layer (Greedy Heuristic):** A custom algorithm that calculates resource transfers and renders them to the Live Dashboard.
+Aria is built on a highly concurrent, asynchronous event-driven architecture using **Node.js** and **Express.js**.
 
 ```mermaid
 graph TD
-    A[Dashboard Command Center] -->|Initiates Call| B(Node.js Backend)
-    B -->|Generates Prompt| C{Google Gemini}
-    C -->|AI Conversational Response| D[TTS Engine]
-    D -->|Audio Stream| E{Twilio}
-    E -->|Real Phone Call| F[Hospital Coordinator]
-    F -->|Natural Voice Input| E
-    E -->|Transcribed Text| C
-    C -->|Extracts Numbers| G[(SQLite Database)]
-    G -->|Runs Allocation Engine| H[Live Transfer Plan Dashboard]
+    A[Command Center Dashboard] -->|WebSocket/REST Initiate| B(Node.js Core)
+    B -->|TwiML Outbound Request| C{Twilio Gateway}
+    C -->|PSTN Network| D[Hospital Coordinator]
+    D -->|Audio (8kHz mulaw)| C
+    C -->|Twilio Media Streams (WSS)| E(Media Stream Handler)
+    E -->|Raw Audio Buffers| F[Speechmatics API]
+    F -->|Real-time Transcript| G{Google Gemini 2.0 Flash}
+    G -->|Extracts State/Intent| H[(SQLite WAL Database)]
+    G -->|Generates Response Text| I[ElevenLabs TTS]
+    I -->|Audio Stream| E
+    E -->|Playback to Caller| C
+    H -->|State Change| J[Greedy Optimization Engine]
+    J -->|Rebalancing Plan| A
 ```
 
-## ⚙️ How the Optimization Works
+## Telephony & Real-Time Audio Pipeline
 
-For each resource type (General Beds, ICUs, Ventilators) independently, we compute every facility's balance (`available` minus `needed`). 
-- Facilities split into **Donors** (surplus) and **Receivers** (deficit).
-- Both lists are sorted largest-first.
-- The algorithm matches Donors to Receivers, transferring the smaller of the two amounts, repeating until every surplus or deficit is resolved.
+Achieving natural conversation latency requires bypassing standard "Gather and Play" TwiML loops. Aria leverages a true bi-directional streaming pipeline:
 
-**Why a Greedy Algorithm?** Speed and Explainability. A command-center operator needs to trust and act on a transfer plan in seconds during a live crisis. A greedy heuristic gives a fast, deterministic, and auditable answer instantly.
+1. **Twilio Media Streams**: The system exposes a dedicated WebSocket endpoint (`/twilio/media-stream`) to receive raw `mulaw` audio tracks encoded at 8kHz.
+2. **Real-Time Transcription**: Incoming audio chunks are piped instantly to the **Speechmatics Real-Time API**, which provides streaming partial and final utterance transcripts.
+3. **Intent & State Reasoning**: Utterances are routed to the `geminiEngine.js` module. Powered by **Google Gemini 2.0 Flash**, this layer manages conversational state, determines if the user is answering a specific resource query (e.g., "We have five beds"), and extracts the numerical values using structured prompt engineering.
+4. **Voice Synthesis**: Responses are instantly synthesized using **ElevenLabs TTS**. To minimize Time-To-First-Byte (TTFB), the audio is streamed directly back down the Twilio WebSocket in small buffers, creating sub-second conversational latency.
 
-## 🛠️ Tech Stack
+## The Resource Rebalancing Algorithm
 
-- **Backend Core**: Node.js, Express.js
-- **Real-Time Updates**: WebSockets (`ws`)
-- **AI & Reasoning**: Google Gemini API (`@google/generative-ai`)
-- **Voice & Telephony**: Twilio Voice, Twilio Media Streams, ElevenLabs
-- **Database**: SQLite (`better-sqlite3`)
-- **Frontend Dashboard**: Vanilla JavaScript, HTML5, CSS3
+The allocation engine (`resourceAllocator.js`) deliberately utilizes a **Deterministic Greedy Heuristic** rather than a Mixed-Integer Program (MIP). 
 
-## ✨ Key Features
+**The Mechanics:**
+1. **Delta Calculation**: For each discrete resource type (General Beds, ICUs, Ventilators), the system calculates the balance: `Available - Needed`.
+2. **Partitioning & Sorting**: Facilities are partitioned into **Donors** (balance > 0) and **Receivers** (balance < 0). Donors are sorted in descending order of surplus; Receivers are sorted in ascending order of deficit.
+3. **Greedy Matching**: The algorithm matches the largest donor to the largest receiver, transferring `min(donor_surplus, receiver_deficit)`. This iterates in $O(N \log N)$ time until the market is cleared.
 
-- **Zero Onboarding**: Any facility with a working phone can participate immediately.
-- **Speed**: Replaces chaotic email chains and manual spreadsheet reconciliation with a unified API call.
-- **Multilingual Foundation**: Built on an engine that supports English, Hindi, and Marathi, making it viable for diverse regional medical staff.
-- **Extensible Architecture**: The underlying telephony and reasoning engine is domain-agnostic and can be repurposed for other immediate-response sectors.
+**Architectural Rationale:**
+During live crises, command-center operators require *explainability*. A greedy match is fully auditable—an operator can manually trace exactly why Facility A was assigned to Facility B. While a full solver (like Gurobi or CPLEX) might find a mathematically tighter global optimum, it acts as a "black box," which degrades human trust during emergency execution.
 
-## 📋 Prerequisites & Quick Start
+## Database & Concurrency
+
+The system utilizes `better-sqlite3` customized for high-concurrency Node.js environments.
+- **WAL Mode (`journal_mode = WAL`)**: Write-Ahead Logging is enabled to allow concurrent reads and writes, crucial for the WebSockets continuously polling dashboard state while inbound Twilio streams write extraction results.
+- **Schema Design**: Strictly normalized tables for `contacts`, `call_queue`, `call_logs`, and `daily_batches` ensure robust state management and allow for safe retry mechanics if a facility drops a call.
+
+## Multilingual Capabilities
+
+Regional healthcare networks often involve diverse linguistic demographics. Aria natively supports code-mixed multilingual interactions.
+- Configurable for **English (`en`)**, **Hindi (`hi`)**, and **Marathi (`mr`)**.
+- The `LanguageEngine` parses the contact's preferred language, instructs Gemini to converse in that specific dialect (or code-mixed Hinglish/Marathinglish), and routes the generated text to a specifically tuned ElevenLabs multilingual voice model.
+
+## Deployment & Configuration
 
 ### Prerequisites
 - Node.js v18+
-- Google Gemini API Key
-- Twilio / Exotel API credentials (for real calls)
-- ElevenLabs API Key (optional, for premium voice)
+- API Keys: Google Gemini, ElevenLabs, Speechmatics
+- Telephony: Twilio Account SID, Auth Token, and Voice-enabled Phone Number
 
 ### Installation
-1. Clone the repository and install dependencies:
-   ```bash
-   git clone <your-repo-url>
-   cd AI_Calling_Agent
-   npm install
-   ```
-2. Set up your environment variables:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your Gemini, Twilio, and ElevenLabs API keys
-   ```
-3. Start the Dashboard Server:
-   ```bash
-   npm run dashboard
-   ```
-4. Open your browser to `http://localhost:3001` to view the Live Command Center.
+```bash
+git clone <repository_url>
+cd AI_Calling_Agent
+npm install
+```
 
-## 🎯 The Live Demo Flow
+### Environment Setup
+Create a `.env` file based on `.env.example`:
+```env
+PORT=3001
+GEMINI_API_KEY=your_gemini_key
+ELEVENLABS_API_KEY=your_elevenlabs_key
+ELEVENLABS_VOICE_ID=your_voice_id
+TWILIO_ACCOUNT_SID=your_sid
+TWILIO_AUTH_TOKEN=your_token
+TWILIO_PHONE_NUMBER=your_number
+```
 
-1. Operator enters a facility name and number, and clicks **Call Facility**.
-2. **Aria Dials out**: *"Hello, this is Aria calling from the Regional Hospital Command Center. I need a quick update on your current capacity..."*
-3. The coordinator answers naturally.
-4. Gemini extracts the numbers mid-conversation and ends the call.
-5. The operator clicks **Run Allocation** on the dashboard.
-6. The transfer plan is rendered on screen (e.g., "12 beds move from City General to Sunrise").
+### Starting the Server
+The system relies on an Express server handling both REST routes and WebSockets.
+```bash
+npm run dashboard
+```
+For external Twilio Webhooks to reach your local environment during testing, utilize `ngrok`:
+```bash
+ngrok http 3001
+```
 
-## 🚀 Roadmap
+## Future Roadmap
 
-While the current system is highly functional, our next steps for enterprise-scale deployment include:
-- **LP/MIP Optimization**: Evolving from a greedy heuristic to a full linear/mixed-integer program for provably optimal transfers at large scale.
-- **Explicit Confirmation**: Asking the caller to verbally confirm extracted numbers ("I heard 5 ICUs, is that correct?") before committing to the database.
-- **Joint Optimization**: Factoring in transport distance and travel times, rather than treating resources independently.
-
-## 📝 License
-Developed for the Orion Global Hackathon.
+- **Geospatial Optimization**: Integrating Google Maps Distance Matrix API to penalize matches between geographically distant facilities.
+- **Explicit Checksum Confirmation**: Instructing the AI to read back extracted numbers ("I have recorded 5 ICUs. Is that correct?") to mathematically harden data integrity before database commits.
+- **SIP Trunking**: Expanding from Twilio/Exotel to direct SIP trunk integrations for deployment within legacy hospital PBX systems.
