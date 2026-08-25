@@ -35,19 +35,19 @@ Aria is built on a highly concurrent, asynchronous event-driven architecture usi
 
 ```mermaid
 graph TD
-    A[Command Center Dashboard] -->|WebSocket/REST Initiate| B(Node.js Core)
-    B -->|TwiML Outbound Request| C{Twilio Gateway}
-    C -->|PSTN Network| D[Hospital Coordinator]
-    D -->|Audio (8kHz mulaw)| C
-    C -->|Twilio Media Streams (WSS)| E(Media Stream Handler)
-    E -->|Raw Audio Buffers| F[Speechmatics API]
-    F -->|Real-time Transcript| G{Google Gemini 2.0 Flash}
-    G -->|Extracts State/Intent| H[(SQLite WAL Database)]
-    G -->|Generates Response Text| I[ElevenLabs TTS]
-    I -->|Audio Stream| E
-    E -->|Playback to Caller| C
-    H -->|State Change| J[Greedy Optimization Engine]
-    J -->|Rebalancing Plan| A
+    A["Command Center Dashboard"] -->|"WebSocket/REST Initiate"| B("Node.js Core")
+    B -->|"TwiML Outbound Request"| C{"Twilio Gateway"}
+    C -->|"PSTN Network"| D["Hospital Coordinator"]
+    D -->|"Audio (8kHz mulaw)"| C
+    C -->|"Twilio Media Streams (WSS)"| E("Media Stream Handler")
+    E -->|"Raw Audio Buffers"| F["Speechmatics API"]
+    F -->|"Real-time Transcript"| G{"Google Gemini 2.0 Flash"}
+    G -->|"Extracts State/Intent"| H[("SQLite WAL Database")]
+    G -->|"Generates Response Text"| I["ElevenLabs TTS"]
+    I -->|"Audio Stream"| E
+    E -->|"Playback to Caller"| C
+    H -->|"State Change"| J["Greedy Optimization Engine"]
+    J -->|"Rebalancing Plan"| A
 ```
 
 ## Telephony & Real-Time Audio Pipeline
